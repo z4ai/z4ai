@@ -32,6 +32,10 @@ dependencies = [
 # (+3% to +12% smaller than ZipNN on real transformers; see README). The codec
 # degrades gracefully without it (effort="max" then falls back to the fast
 # default). Included in test/benchmark extras so the brotli path runs in CI.
+# `hf` adds the optional HuggingFace integration (z4ai.integrations): a torch
+# state-dict load/save shim and a `from_pretrained` patch that transparently
+# loads z4ai-compressed weights. The core codec needs neither dependency.
+hf = ["torch", "safetensors>=0.4"]
 test = ["pytest>=7.0", "brotli"]
 benchmark = ["zipnn", "brotli"]
 maxratio = ["brotli"]

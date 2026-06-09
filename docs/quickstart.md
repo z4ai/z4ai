@@ -42,6 +42,61 @@ restored = z4ai.decompress_delta(delta, reference=step_1000)
 assert bytes(restored) == step_2000        # lossless
 ```
 
+## Shrink a `.safetensors` file, keep per-tensor random access
+
+`z4ai.safetensors` compresses a `.safetensors` file into a `ZSTN` container that
+stays byte-identical on the round trip - but unlike a plain zip, it keeps a
+per-tensor index, so you can lazily read a single tensor without touching the
+rest of the file (the same access pattern `safetensors` gives you).
+
+```python
+from z4ai import safetensors
+
+# whole-file: ZSTN is byte-identical to the original .safetensors on decompress
+stats = safetensors.compress_file("model.safetensors", "model.zstn")
+print(f"{stats['ratio']:.2f}x  ({stats['saved_pct']:.1f}% smaller)")
+safetensors.decompress_file("model.zstn", "restored.safetensors")
+
+# random access: read just one tensor, seeking past the rest of the file
+with safetensors.ZstnReader.open("model.zstn") as r:
+    print(r.names()[:3])                              # tensor names, no decode
+    w = r.read_numpy("model.embed_tokens.weight")     # decodes only this tensor
+```
+
+## From the command line
+
+The CLI is the generic byte codec (one frame in, one frame out). For the
+tensor-aware `ZSTN` container with per-tensor random access, use the
+`z4ai.safetensors` API above.
+
+```bash
+z4ai compress   weights.bin  -o weights.z4ai
+z4ai decompress weights.z4ai -o weights.bin
+z4ai info       weights.z4ai          # ratio + per-plane breakdown
+```
+
+See {doc}`cli` for every flag (effort tiers, threads, dtype).
+
+## Load into PyTorch / transformers
+
+With the `hf` extra (`pip install "z4ai[hf]"`), load compressed weights straight
+into a torch state dict, or patch `transformers` to do it transparently:
+
+```python
+import z4ai
+
+z4ai.save_file(model.state_dict(), "model.z4ai.safetensors")
+state = z4ai.load_file("model.z4ai.safetensors")     # -> {name: torch.Tensor}
+
+# ...or transparent from_pretrained (call before importing transformers):
+from z4ai import enable_hf
+enable_hf()
+from transformers import AutoModelForCausalLM
+model = AutoModelForCausalLM.from_pretrained("your-org/model", variant="z4ai")
+```
+
+See {doc}`usage` for the full HuggingFace integration.
+
 ## The three mental tiers of the API
 
 | You have... | Use | Notes |

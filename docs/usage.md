@@ -122,6 +122,46 @@ with ZstnReader.open("model.zstn") as r:
 The `ZSTN` container carries a per-tensor index + footer for the random-access
 reads and deduplicates tied weights so they are stored once.
 
+## HuggingFace integration
+
+The optional `z4ai.integrations` module loads z4ai-compressed weights into
+`torch` / `transformers`. It needs the `hf` extra (`pip install "z4ai[hf]"`,
+which pulls in `torch` and `safetensors`); the core codec needs neither.
+
+**Load / save a torch state dict** — drop-in for `safetensors.torch.load_file` /
+`save_file`. A `ZSTN` file is decompressed in memory; a plain `.safetensors` file
+passes through unchanged.
+
+```python
+import z4ai
+
+stats = z4ai.save_file(model.state_dict(), "model.z4ai.safetensors")
+print(f"{stats['saved_pct']:.0f}% smaller")
+
+state = z4ai.load_file("model.z4ai.safetensors")   # -> {name: torch.Tensor}
+model.load_state_dict(state)
+```
+
+**Transparent `from_pretrained`** — `enable_hf()` patches `safetensors` so
+`transformers` (and `vllm`) load compressed weights with no other code change.
+Compress your weights and name them with a variant suffix
+(`model.z4ai.safetensors`), then load with `variant="z4ai"`. Call `enable_hf()`
+**before** importing `transformers`/`vllm` — they bind `safe_open` at import time.
+
+```python
+from z4ai import enable_hf
+enable_hf()                                        # before importing transformers
+
+from transformers import AutoModelForCausalLM, AutoTokenizer
+model = AutoModelForCausalLM.from_pretrained("your-org/model", variant="z4ai")
+tok   = AutoTokenizer.from_pretrained("your-org/model")
+```
+
+This mirrors ZipNN's `zipnn_safetensors()`, but z4ai's strongest cases are the
+self-hosted ones — your own object storage or model registry — and the
+cross-checkpoint `compress_delta` mode, which has no `from_pretrained` equivalent
+on either side.
+
 ## High-throughput native path
 
 For the load-often path, `z4ai.chunked` is backed by a fused, multithreaded C

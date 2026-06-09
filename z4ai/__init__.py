@@ -284,3 +284,17 @@ def decompress_delta(blob: bytes, reference, *, out: Optional[bytearray] = None)
     """Reconstruct a checkpoint from a delta frame and its ``reference`` (see
     :func:`compress_delta`)."""
     return delta.decompress(blob, reference, out=out)
+
+
+# Lazy re-export of the optional HuggingFace integration (needs torch +
+# safetensors).  Accessed as ``z4ai.enable_hf`` / ``z4ai.load_file`` etc. without
+# importing torch at package import time.
+_HF_EXPORTS = {"enable_hf", "disable_hf", "is_enabled", "load_file", "save_file"}
+
+
+def __getattr__(name: str):
+    if name in _HF_EXPORTS:
+        from . import integrations
+
+        return getattr(integrations, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
