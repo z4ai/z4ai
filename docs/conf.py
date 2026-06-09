@@ -58,6 +58,11 @@ intersphinx_mapping = {
 
 html_theme = "furo"
 html_title = "z4ai"
+# Drop the per-page "view source" link (the eye icon in the top-right); the raw
+# .md adds little for readers and leaves a lone, dev-looking button up there.  The
+# theme toggle stays; the canonical repo link is the footer GitHub icon.
+html_show_sourcelink = False
+html_copy_source = False
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_logo = "_static/logo.svg"
@@ -72,9 +77,13 @@ _LIGHT_PRIMARY = "#5a3fd6"
 _LIGHT_CONTENT = "#6a2fce"
 
 html_theme_options = {
-    "source_repository": "https://github.com/z4ai/z4ai",
-    "source_branch": "main",
-    "source_directory": "docs/",
+    # NOTE: the per-page "view source"/"edit this page" buttons (Furo's
+    # ``source_repository``/``source_branch``/``source_directory``) are
+    # intentionally omitted: they deep-link to github.com/z4ai/z4ai/edit/... which
+    # 404s until that repo is public with the docs tree in it, so they render as
+    # dead buttons in the top-right.  The footer GitHub icon below is the single
+    # canonical project link.  Re-add the three source_* keys once the repo is
+    # public to turn on edit-on-GitHub.
     "sidebar_hide_name": True,  # the logo already carries the wordmark
     "light_css_variables": {
         "color-brand-primary": _LIGHT_PRIMARY,
