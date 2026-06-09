@@ -6,7 +6,7 @@
 
 # z4ai
 
-**A lossless storage-and-distribution layer for AI model checkpoints.**
+**A lossless compression codec for AI model checkpoints.**
 
 Keep model checkpoints small for storage and transfer - bit-for-bit reversible,
 with per-tensor random access. Most useful on **collections of related
