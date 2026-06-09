@@ -21,11 +21,15 @@ registries, internal MLOps, plain object storage.
 
 </div>
 
+```bash
+pip install z4ai
+```
+
 ```python
 import z4ai
 
-blob = z4ai.compress(weights_bytes, dtype="bf16")   # smaller, self-describing
-data = z4ai.decompress(blob)                          # byte-identical original
+blob = z4ai.compress(weights_bytes)   # smaller, self-describing
+data = z4ai.decompress(blob)          # byte-identical original
 assert data == weights_bytes
 ```
 
@@ -40,16 +44,16 @@ restored = z4ai.decompress_delta(delta, reference=step_1000)   # exact == step_2
 # only the changed bytes cost anything - often 10-100x smaller than a full compress
 ```
 
-## Install
+Or from the command line, on files:
 
 ```bash
-pip install z4ai
+z4ai compress   weights.bin -o weights.z4ai --dtype fp32
+z4ai decompress weights.z4ai -o weights.bin
+z4ai info       weights.z4ai            # ratio + per-plane breakdown
 ```
 
-Requires Python >= 3.9. Pure Python (NumPy + `zstandard`); the native entropy core
-is optional and z4ai degrades gracefully without it. Full
-[installation guide](https://z4ai.github.io/z4ai/installation.html) (optional
-extras, native acceleration) in the docs.
+Requires Python >= 3.9; pure Python (NumPy + `zstandard`), with optional native
+acceleration.
 
 ## TL;DR
 
