@@ -38,7 +38,7 @@ Its strongest case is a *sequence* of related checkpoints - consecutive ones are
 
 ```python
 # store checkpoint N as the bit-exact delta from checkpoint N-1
-delta    = z4ai.compress_delta(step_2000, reference=step_1000, dtype="bf16")
+delta    = z4ai.compress_delta(step_2000, reference=step_1000)
 restored = z4ai.decompress_delta(delta, reference=step_1000)   # exact == step_2000
 
 # only the changed bytes cost anything - often 10-100x smaller than a full compress
@@ -47,7 +47,7 @@ restored = z4ai.decompress_delta(delta, reference=step_1000)   # exact == step_2
 Or from the command line, on files:
 
 ```bash
-z4ai compress   weights.bin -o weights.z4ai --dtype fp32
+z4ai compress   weights.bin -o weights.z4ai
 z4ai decompress weights.z4ai -o weights.bin
 z4ai info       weights.z4ai            # ratio + per-plane breakdown
 ```

@@ -14,9 +14,26 @@ storage.
 ```python
 import z4ai
 
-blob = z4ai.compress(weights_bytes, dtype="bf16")   # smaller, self-describing
-data = z4ai.decompress(blob)                          # byte-identical original
+blob = z4ai.compress(weights_bytes)   # smaller, self-describing
+data = z4ai.decompress(blob)          # byte-identical original
 assert data == weights_bytes
+```
+
+Its strongest case is a *sequence* of related checkpoints - consecutive ones are
+~95-99% identical, so each is stored as a tiny delta from the one before:
+
+```python
+# store checkpoint N as the bit-exact delta from checkpoint N-1
+delta    = z4ai.compress_delta(step_2000, reference=step_1000)
+restored = z4ai.decompress_delta(delta, reference=step_1000)   # exact == step_2000
+```
+
+Or from the command line, on files:
+
+```bash
+z4ai compress   weights.bin -o weights.z4ai
+z4ai decompress weights.z4ai -o weights.bin
+z4ai info       weights.z4ai            # ratio + per-plane breakdown
 ```
 
 It is a small, pure-Python package (NumPy + `zstandard`; no PyTorch, no compiled
