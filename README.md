@@ -199,20 +199,6 @@ side-channel metadata, and the output is never larger than the input. Pruned
 weights take a zero-aware path; the safetensors/ZSTN container adds a per-tensor
 index for random-access reads and stores tied weights once.
 
-## Documentation
-
-Full docs - quickstart, usage, how it works, CLI, and the API reference - live at
-**[z4ai.github.io/z4ai](https://z4ai.github.io/z4ai/)**.
-
-| Page | What's there |
-|---|---|
-| [Quickstart](https://z4ai.github.io/z4ai/quickstart.html) | Compress a buffer, an ndarray, or a `.safetensors` file in a few lines. |
-| [Usage](https://z4ai.github.io/z4ai/usage.html) | Effort tiers, sparse/quantized weights, checkpoint & model deltas, per-tensor random access, the high-throughput native path. |
-| [How it works](https://z4ai.github.io/z4ai/howitworks.html) | Field decorrelation, whole-tensor matching, the best-of selector, and where the codec pays off. |
-| [CLI](https://z4ai.github.io/z4ai/cli.html) | `z4ai compress / decompress / info`, pipe-friendly. |
-| [Background & references](https://z4ai.github.io/z4ai/background.html) | Prior art (ZipNN, DFloat11, NeuZip, ZipLLM, fpzip, rANS/FSE ...) and the honest entropy-ceiling framing. |
-| [API reference](https://z4ai.github.io/z4ai/api.html) | Every public function, generated from the source. |
-
 ## References
 
 z4ai's building blocks are well-studied; the contribution is applying them to the
