@@ -172,6 +172,33 @@ core - the deliberate trade for a **write-once, read-many** artifact. A fused
 multithreaded native codec (`z4ai.chunked`) and `effort="fast"`/`"max"` tiers
 trade decode latency against file size.
 
+## How it works
+
+A float is `[ sign | exponent | mantissa ]`: in trained weights the exponent bits
+repeat heavily while the mantissa looks like noise, and the two are interleaved
+byte-by-byte - so a general-purpose zip can't separate them (plain `zstd` on raw
+fp32 barely reaches ~1.06x). z4ai pulls the bytes apart, matches redundancy across
+the whole tensor, then entropy-codes each part near its floor:
+
+```mermaid
+flowchart TD
+    IN["Float tensor bytes<br/>(bf16 / fp16 / fp32 / fp64)"]
+    IN -->|split by dtype| SPLIT["Plane / bit-field split"]
+    SPLIT --> EXP["Exponent / sign plane<br/>(low entropy)"]
+    SPLIT --> MAN["Mantissa plane<br/>(noise-like)"]
+    EXP --> ENT["Entropy coding<br/>(rANS / zstd)"]
+    MAN --> STORE["Store verbatim, or zstd"]
+    ENT --> LDM["Whole-tensor long-distance matching<br/>dedups tied / repeated weights"]
+    STORE --> LDM
+    LDM --> BEST["Best-of selection: keep the smallest<br/>never worse than plain zstd"]
+    BEST --> OUT["Self-describing container<br/>(.z4ai / .zstn)"]
+```
+
+Decoding is the exact inverse, driven entirely by the self-describing header - no
+side-channel metadata, and the output is never larger than the input. Pruned
+weights take a zero-aware path; the safetensors/ZSTN container adds a per-tensor
+index for random-access reads and stores tied weights once.
+
 ## Documentation
 
 Full docs - quickstart, usage, how it works, CLI, and the API reference - live at
@@ -185,3 +212,25 @@ Full docs - quickstart, usage, how it works, CLI, and the API reference - live a
 | [CLI](https://z4ai.github.io/z4ai/cli.html) | `z4ai compress / decompress / info`, pipe-friendly. |
 | [Background & references](https://z4ai.github.io/z4ai/background.html) | Prior art (ZipNN, DFloat11, NeuZip, ZipLLM, fpzip, rANS/FSE ...) and the honest entropy-ceiling framing. |
 | [API reference](https://z4ai.github.io/z4ai/api.html) | Every public function, generated from the source. |
+
+## References
+
+z4ai's building blocks are well-studied; the contribution is applying them to the
+byte structure of model weights and matching across the whole tensor - and across
+checkpoints. On *dense* weights it cannot meaningfully out-ratio ZipNN (the entropy
+ceiling binds every lossless codec equally); the wins come from structure, reduced
+precision, sparsity, and cross-checkpoint deltas.
+
+- **Float field decorrelation** - Lindstrom & Isenburg, *fpzip*, IEEE TVCG 2006
+  ([project](https://computing.llnl.gov/projects/fpzip)); applied to NN weights by
+  [ZipNN](https://arxiv.org/abs/2411.05239) (the codec benchmarked against here).
+- **Long-distance LZ matching** - Ziv & Lempel,
+  [LZ77](https://ieeexplore.ieee.org/document/1055714) (1977), via Zstandard
+  ([RFC 8878](https://datatracker.ietf.org/doc/html/rfc8878)).
+- **Entropy coding (rANS)** - Duda,
+  [Asymmetric Numeral Systems](https://arxiv.org/abs/1311.2540) (2013).
+- **Cross-checkpoint / cross-model delta** - [ZipLLM](https://arxiv.org/abs/2505.06252)
+  (NSDI 2026) - the basis for `compress_delta` / `model_delta`.
+
+The full survey (DFloat11, NeuZip, DietGPU, ECF8, ALP, Pcodec, the BF16 entropy
+ceiling) is in the [docs](https://z4ai.github.io/z4ai/background.html).
