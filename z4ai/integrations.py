@@ -17,6 +17,7 @@ Two layers, smallest-footprint first:
 so importing :mod:`z4ai` never pulls them in.  Install with ``pip install
 z4ai[hf]`` (or ``pip install torch safetensors``).
 """
+
 from __future__ import annotations
 
 import os

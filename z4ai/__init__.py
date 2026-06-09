@@ -109,8 +109,7 @@ def _as_bytes(data) -> bytes:
     if isinstance(data, (bytearray, memoryview)):
         return bytes(data)
     raise TypeError(
-        "data must be bytes-like or a numpy.ndarray, got "
-        f"{type(data).__name__}"
+        "data must be bytes-like or a numpy.ndarray, got " f"{type(data).__name__}"
     )
 
 
@@ -173,7 +172,9 @@ def compress(
     """
     # Lazy ndarray detection so ``import z4ai`` never requires numpy at import
     # time beyond what the codec already pulls in.
-    is_array = hasattr(data, "dtype") and hasattr(data, "shape") and hasattr(data, "tobytes")
+    is_array = (
+        hasattr(data, "dtype") and hasattr(data, "shape") and hasattr(data, "tobytes")
+    )
 
     # Always build the fast streaming frame first: it is the floor (multi-GB/s)
     # and, on long-range-duplicate weights, its whole-buffer LDM beats the AUTO
@@ -231,15 +232,14 @@ def decompress(blob: bytes, *, out: Optional[Union[bytearray, memoryview]] = Non
     if out is not None:
         mv = memoryview(out)
         if len(mv) < len(result):
-            raise ValueError(
-                f"out buffer too small: {len(mv)} < {len(result)}"
-            )
+            raise ValueError(f"out buffer too small: {len(mv)} < {len(result)}")
         mv[: len(result)] = result
         return out
     return result
 
 
 # --- NumPy convenience helpers ------------------------------------------------
+
 
 def compress_ndarray(
     arr, *, level: Optional[int] = None, threads: int = 0, effort: Optional[str] = None
@@ -260,6 +260,7 @@ def decompress_ndarray(blob: bytes):
 
 # --- Cross-checkpoint delta -------------------------------------------------
 
+
 def compress_delta(
     current,
     reference,
@@ -275,9 +276,7 @@ def compress_delta(
     compresses far below the from-scratch float-entropy ceiling.  Decompress with
     :func:`decompress_delta` and the *same* ``reference``.  See :mod:`z4ai.delta`.
     """
-    return delta.compress(
-        current, reference, dtype=dtype, level=level, threads=threads
-    )
+    return delta.compress(current, reference, dtype=dtype, level=level, threads=threads)
 
 
 def decompress_delta(blob: bytes, reference, *, out: Optional[bytearray] = None):

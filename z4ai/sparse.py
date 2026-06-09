@@ -43,7 +43,12 @@ _FLAG_NUMPY = 1 << 0
 # Element widths we can interpret as fixed-width unsigned integers for the
 # "is this element exactly zero?" test.  Anything else is not a sparse case we
 # handle (the caller keeps the dense frame).
-_UINT_DTYPE = {1: np.dtype("u1"), 2: np.dtype("<u2"), 4: np.dtype("<u4"), 8: np.dtype("<u8")}
+_UINT_DTYPE = {
+    1: np.dtype("u1"),
+    2: np.dtype("<u2"),
+    4: np.dtype("<u4"),
+    8: np.dtype("<u8"),
+}
 
 # Bitmap is tiny and very compressible; a mid Zstd level is cheap and helps.
 _BITMAP_LEVEL = 9
@@ -81,9 +86,9 @@ def sparsity(raw: bytes, width: int) -> float:
 # borderline inputs behave identically.  The 0.5 safety margin is far wider than
 # the subsample's statistical error, so a real >=10%-sparse buffer is never
 # fast-skipped (its sample reads well above 5%).
-_SPARSE_SAMPLE_MIN = 1 << 20      # 1M elements
-_SPARSE_SAMPLE_ELEMS = 1 << 20    # total subsample size
-_SPARSE_SAMPLE_WINDOWS = 64       # contiguous windows spread across the buffer
+_SPARSE_SAMPLE_MIN = 1 << 20  # 1M elements
+_SPARSE_SAMPLE_ELEMS = 1 << 20  # total subsample size
+_SPARSE_SAMPLE_WINDOWS = 64  # contiguous windows spread across the buffer
 _SPARSE_SAMPLE_SAFETY = 0.5
 
 

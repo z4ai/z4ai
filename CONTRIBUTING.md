@@ -34,9 +34,15 @@ question-tagged issue. For usage, see the
    ```
 3. Add tests for your change. Round-trip (lossless) correctness must be covered;
    ratio/throughput changes should come with a benchmark or a note in the PR.
-4. Keep the public API stable (see `API_CONTRACT.md`) and the output format
+4. Format your code with [black](https://black.readthedocs.io/) before pushing;
+   CI runs `black --check` and will fail on unformatted code:
+   ```bash
+   pip install -e ".[lint]"
+   black .          # autoformat, or `black --check .` to just verify
+   ```
+5. Keep the public API stable (see `API_CONTRACT.md`) and the output format
    backward-compatible, or call the break out explicitly in your PR.
-5. Open a pull request describing the change and the measurements behind it.
+6. Open a pull request describing the change and the measurements behind it.
 
 ## Code of conduct
 

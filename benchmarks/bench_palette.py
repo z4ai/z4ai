@@ -14,6 +14,7 @@ zstd-19, and -- when installed and verified lossless -- ZipNN.
 
     python benchmarks/bench_palette.py
 """
+
 from __future__ import annotations
 
 import sys
@@ -30,6 +31,7 @@ from z4ai import palette  # noqa: E402
 
 try:
     from zipnn import ZipNN
+
     _HAVE_ZIPNN = True
 except Exception:  # noqa: BLE001
     _HAVE_ZIPNN = False
@@ -65,7 +67,9 @@ def main() -> None:
     w = rng.standard_normal(n).astype(np.float32)
     zdt = {"bf16": "bfloat16", "fp16": "float16", "fp32": "float32"}
 
-    print(f"palette benchmark - {n/1e6:.0f}M elements per tensor, per-tensor quantised\n")
+    print(
+        f"palette benchmark - {n/1e6:.0f}M elements per tensor, per-tensor quantised\n"
+    )
     header = f"{'scheme':16s} {'dtype':5s} {'z4ai':>8s} {'zstd-19':>8s}"
     if _HAVE_ZIPNN:
         header += f" {'zipnn':>8s}"

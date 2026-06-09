@@ -17,6 +17,7 @@ chunking cannot fully exploit.
 
     PYTHONPATH=. .venv/bin/python benchmarks/bench_safetensors.py --layers 8 --d 1024
 """
+
 from __future__ import annotations
 
 import argparse
@@ -61,7 +62,11 @@ def _build_model(layers: int, d: int, vocab: int, seed: int) -> bytes:
     header, buffers, off = {}, [], 0
     for name, arr in tensors.items():
         raw = np.ascontiguousarray(arr).tobytes()
-        header[name] = {"dtype": "BF16", "shape": [len(arr)], "data_offsets": [off, off + len(raw)]}
+        header[name] = {
+            "dtype": "BF16",
+            "shape": [len(arr)],
+            "data_offsets": [off, off + len(raw)],
+        }
         buffers.append(raw)
         off += len(raw)
     hj = json.dumps(header).encode("utf-8")
@@ -78,7 +83,9 @@ def _best(fn, repeats=2):
 
 
 def _whole_file_zstd(blob: bytes, level: int):
-    params = zstd.ZstdCompressionParameters.from_level(level, enable_ldm=True, window_log=27)
+    params = zstd.ZstdCompressionParameters.from_level(
+        level, enable_ldm=True, window_log=27
+    )
     c = zstd.ZstdCompressor(compression_params=params)
     d = zstd.ZstdDecompressor(max_window_size=1 << 27)
     comp = c.compress(blob)
@@ -119,14 +126,18 @@ def main(argv=None):
 
     blob = _build_model(args.layers, args.d, args.vocab, args.seed)
     orig = len(blob)
-    print(f"Synthetic BF16 checkpoint: {orig/1e6:.1f} MB "
-          f"({args.layers} layers, d={args.d}, vocab={args.vocab}, tied embedding)\n")
+    print(
+        f"Synthetic BF16 checkpoint: {orig/1e6:.1f} MB "
+        f"({args.layers} layers, d={args.d}, vocab={args.vocab}, tied embedding)\n"
+    )
     print(f"{'approach':<22}{'ratio':>9}{'MB/s':>9}{'lossless':>10}")
     print("-" * 50)
 
     # whole-file zstd
     (wf, _), s = _best(lambda: (_whole_file_zstd(blob, args.zstd_level), None))
-    print(f"{'whole-file zstd-'+str(args.zstd_level):<22}{orig/wf:>9.3f}{(orig/1e6)/s:>9.0f}{'yes':>10}")
+    print(
+        f"{'whole-file zstd-'+str(args.zstd_level):<22}{orig/wf:>9.3f}{(orig/1e6)/s:>9.0f}{'yes':>10}"
+    )
 
     # per-tensor zipnn
     zt = _per_tensor_zipnn(blob)
@@ -142,10 +153,14 @@ def main(argv=None):
 
     print()
     if zt:
-        print(f"z4ai vs per-tensor ZipNN: ratio {(orig/za)/(orig/zt):.2f}x "
-              f"({(1 - za/zt)*100:+.1f}% smaller output)")
-    print(f"z4ai vs whole-file zstd : ratio {(orig/za)/(orig/wf):.2f}x "
-          f"({(1 - za/wf)*100:+.1f}% smaller output)")
+        print(
+            f"z4ai vs per-tensor ZipNN: ratio {(orig/za)/(orig/zt):.2f}x "
+            f"({(1 - za/zt)*100:+.1f}% smaller output)"
+        )
+    print(
+        f"z4ai vs whole-file zstd : ratio {(orig/za)/(orig/wf):.2f}x "
+        f"({(1 - za/wf)*100:+.1f}% smaller output)"
+    )
 
 
 if __name__ == "__main__":

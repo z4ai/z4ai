@@ -19,6 +19,7 @@ on in-place mutation. Returns a ``(compress, decompress, available)`` triple tha
 self-tests round-trip and reports ``available=False`` if ZipNN can't losslessly
 handle the dtype in this environment.
 """
+
 from __future__ import annotations
 
 from typing import Callable, Optional, Tuple
@@ -32,7 +33,9 @@ _BF16 = "bf16"
 
 def make_zipnn_codec(
     dtype: str,
-) -> Tuple[Optional[Callable[[bytes], object]], Optional[Callable[[object], bytes]], bool]:
+) -> Tuple[
+    Optional[Callable[[bytes], object]], Optional[Callable[[object], bytes]], bool
+]:
     """Return ``(compress, decompress, available)`` for a lossless ZipNN run.
 
     ``compress`` takes the original raw little-endian ``bytes`` and returns an
@@ -101,7 +104,7 @@ def _selftest(comp, decomp, dtype: str) -> bool:
     """Confirm the chosen ZipNN path is byte-exact on a small sample."""
     try:
         rng = np.random.default_rng(0)
-        f = (rng.standard_normal(512).astype(np.float32) * 0.02)
+        f = rng.standard_normal(512).astype(np.float32) * 0.02
         if dtype == "fp32":
             raw = f.astype("<f4").tobytes()
         elif dtype == "fp16":

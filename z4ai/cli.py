@@ -58,8 +58,7 @@ DTYPE_WIDTHS = {
 }
 
 _METHOD_NAMES = {
-    format_method: name
-    for format_method, name in [(0, "store"), (1, "zstd")]
+    format_method: name for format_method, name in [(0, "store"), (1, "zstd")]
 }
 
 
@@ -138,15 +137,23 @@ def _cmd_compress(args: argparse.Namespace) -> int:
     if args.width is not None:
         width = _resolve_width(None, args.width)
         blob = codec.compress(
-            data, width=width, level=args.level, escalate_level=escalate,
-            threads=args.threads, plane_workers=args.plane_workers,
+            data,
+            width=width,
+            level=args.level,
+            escalate_level=escalate,
+            threads=args.threads,
+            plane_workers=args.plane_workers,
             auto=not args.fast,
         )
     else:
         width = _resolve_width(args.dtype, None)
         blob = codec.compress(
-            data, dtype=args.dtype, level=args.level, escalate_level=escalate,
-            threads=args.threads, plane_workers=args.plane_workers,
+            data,
+            dtype=args.dtype,
+            level=args.level,
+            escalate_level=escalate,
+            threads=args.threads,
+            plane_workers=args.plane_workers,
             auto=not args.fast,
         )
     out_path = args.output or _default_out(args.input, compressing=True)
@@ -171,9 +178,7 @@ def _cmd_decompress(args: argparse.Namespace) -> int:
     out_path = args.output or _default_out(args.input, compressing=False)
     _write_all(out_path, data)
     if not args.quiet and out_path != "-":
-        sys.stderr.write(
-            f"{args.input}: {_human(len(blob))} -> {_human(len(data))}\n"
-        )
+        sys.stderr.write(f"{args.input}: {_human(len(blob))} -> {_human(len(data))}\n")
     return 0
 
 
@@ -223,9 +228,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="z4ai",
         description="z4ai: lossless compression tuned for neural-network weights.",
     )
-    parser.add_argument(
-        "--version", action="version", version=f"z4ai {__version__}"
-    )
+    parser.add_argument("--version", action="version", version=f"z4ai {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     common_io = argparse.ArgumentParser(add_help=False)
@@ -290,9 +293,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     c.set_defaults(func=_cmd_compress)
 
-    d = sub.add_parser(
-        "decompress", parents=[common_io], help="decompress a z4ai blob"
-    )
+    d = sub.add_parser("decompress", parents=[common_io], help="decompress a z4ai blob")
     d.set_defaults(func=_cmd_decompress)
 
     i = sub.add_parser("info", help="print header/plane info for a z4ai blob")

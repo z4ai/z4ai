@@ -51,7 +51,7 @@ def _structured_weights_bf16() -> bytes:
     sensitive to a particular noise level.
     """
     rng = np.random.default_rng(0)
-    base = (rng.standard_normal(_BASE).astype(np.float32) * 0.02)
+    base = rng.standard_normal(_BASE).astype(np.float32) * 0.02
     n_tiles = (_N_ELEMS + _BASE - 1) // _BASE
     f32 = np.tile(base, n_tiles)[:_N_ELEMS]
     return f32_to_bf16_bytes(f32)

@@ -20,6 +20,7 @@ Usage::
     python benchmarks/benchmark_real.py --url <hf-resolve-url> --dtype fp32
     python benchmarks/benchmark_real.py --file /path/to/pytorch_model.bin
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,7 +37,9 @@ sys.path.insert(0, str(_HERE.parent))  # repo root for `import z4ai`
 
 import zstandard as zstd  # noqa: E402
 
-DEFAULT_URL = "https://huggingface.co/prajjwal1/bert-tiny/resolve/main/pytorch_model.bin"
+DEFAULT_URL = (
+    "https://huggingface.co/prajjwal1/bert-tiny/resolve/main/pytorch_model.bin"
+)
 DEFAULT_CACHE = Path("/tmp/z4ai_realmodel.bin")
 
 # Map a NumPy float dtype to the codes z4ai / ZipNN understand.
@@ -75,7 +78,11 @@ def load_weights(path: Path, want_dtype: str) -> bytes:
         raise SystemExit(
             f"no {want_dtype} tensors found in {path}; try --dtype float16"
         )
-    return np.concatenate(flats).astype("<f4" if want_dtype == "float32" else "<f2").tobytes()
+    return (
+        np.concatenate(flats)
+        .astype("<f4" if want_dtype == "float32" else "<f2")
+        .tobytes()
+    )
 
 
 def fetch(url: str, cache: Path) -> Path:
@@ -90,7 +97,9 @@ def bench_z4ai(data: bytes, dtype_code: str, repeats: int):
     import z4ai
 
     orig = bytes(data)
-    comp, c_sec = _time(lambda: z4ai.compress(bytearray(orig), dtype=dtype_code), repeats=repeats)
+    comp, c_sec = _time(
+        lambda: z4ai.compress(bytearray(orig), dtype=dtype_code), repeats=repeats
+    )
     out, d_sec = _time(lambda: z4ai.decompress(comp), repeats=repeats)
     return _row("z4ai", orig, comp, c_sec, d_sec, bytes(out) == orig)
 
@@ -102,12 +111,18 @@ def bench_zipnn(data: bytes, zdtype: str, repeats: int):
     # ZipNN's byte path mutates its input and requires a mutable bytearray; hand
     # each call a throwaway copy and verify against the pristine original.
     comp, c_sec = _time(
-        lambda: zipnn.ZipNN(bytearray_dtype=zdtype, input_format="byte").compress(bytearray(orig)),
+        lambda: zipnn.ZipNN(bytearray_dtype=zdtype, input_format="byte").compress(
+            bytearray(orig)
+        ),
         repeats=repeats,
     )
-    fixed = zipnn.ZipNN(bytearray_dtype=zdtype, input_format="byte").compress(bytearray(orig))
+    fixed = zipnn.ZipNN(bytearray_dtype=zdtype, input_format="byte").compress(
+        bytearray(orig)
+    )
     out, d_sec = _time(
-        lambda: zipnn.ZipNN(bytearray_dtype=zdtype, input_format="byte").decompress(bytearray(fixed)),
+        lambda: zipnn.ZipNN(bytearray_dtype=zdtype, input_format="byte").decompress(
+            bytearray(fixed)
+        ),
         repeats=repeats,
     )
     return _row("zipnn", orig, comp, c_sec, d_sec, bytes(out) == orig)
@@ -142,9 +157,15 @@ def _try(name, fn):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--url", default=DEFAULT_URL, help="HuggingFace resolve URL for a checkpoint")
-    p.add_argument("--file", default=None, help="use a local checkpoint instead of downloading")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--url", default=DEFAULT_URL, help="HuggingFace resolve URL for a checkpoint"
+    )
+    p.add_argument(
+        "--file", default=None, help="use a local checkpoint instead of downloading"
+    )
     p.add_argument("--cache", default=str(DEFAULT_CACHE))
     p.add_argument("--dtype", default="float32", choices=["float32", "float16"])
     p.add_argument("--repeats", type=int, default=3)
@@ -154,8 +175,10 @@ def main(argv=None):
     path = Path(args.file) if args.file else fetch(args.url, Path(args.cache))
     data = load_weights(path, args.dtype)
     n = len(data)
-    print(f"\nReal-model benchmark - {path.name}, dtype={args.dtype}, "
-          f"{n/1e6:.2f} MB ({n // (4 if args.dtype=='float32' else 2):,} elements)\n")
+    print(
+        f"\nReal-model benchmark - {path.name}, dtype={args.dtype}, "
+        f"{n/1e6:.2f} MB ({n // (4 if args.dtype=='float32' else 2):,} elements)\n"
+    )
 
     rows = []
     r = _try("zstd", lambda: bench_zstd(data, args.zstd_level, args.repeats))
@@ -172,17 +195,25 @@ def main(argv=None):
     print(header)
     print("-" * len(header))
     for r in rows:
-        print(f"{r['name']:<12}{r['ratio']:>9.3f}{r['comp_mb']:>10.2f}{r['comp_mbps']:>12.0f}"
-              f"{r['decomp_mbps']:>14.0f}{('yes' if r['lossless'] else 'NO!'):>10}")
+        print(
+            f"{r['name']:<12}{r['ratio']:>9.3f}{r['comp_mb']:>10.2f}{r['comp_mbps']:>12.0f}"
+            f"{r['decomp_mbps']:>14.0f}{('yes' if r['lossless'] else 'NO!'):>10}"
+        )
 
     by = {r["name"]: r for r in rows}
     if "z4ai" in by and "zipnn" in by:
         z, n_ = by["z4ai"], by["zipnn"]
         print(f"\n  z4ai vs ZipNN on real weights:")
-        print(f"    ratio   : {z['ratio']/n_['ratio']:.2f}x  ({(z['ratio']/n_['ratio']-1)*100:+.0f}% better compression)")
-        print(f"    stored  : {z['comp_mb']:.1f} MB vs {n_['comp_mb']:.1f} MB "
-              f"({(1-z['comp_mb']/n_['comp_mb'])*100:.0f}% smaller file)")
-        print(f"    compress: {z['comp_mbps']/n_['comp_mbps']:.2f}x throughput (one-time cost)")
+        print(
+            f"    ratio   : {z['ratio']/n_['ratio']:.2f}x  ({(z['ratio']/n_['ratio']-1)*100:+.0f}% better compression)"
+        )
+        print(
+            f"    stored  : {z['comp_mb']:.1f} MB vs {n_['comp_mb']:.1f} MB "
+            f"({(1-z['comp_mb']/n_['comp_mb'])*100:.0f}% smaller file)"
+        )
+        print(
+            f"    compress: {z['comp_mbps']/n_['comp_mbps']:.2f}x throughput (one-time cost)"
+        )
         print(f"    decode  : {z['decomp_mbps']/n_['decomp_mbps']:.2f}x throughput")
 
 

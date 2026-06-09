@@ -5,6 +5,7 @@
 Skipped automatically if no C compiler is available (e.g. minimal CI images),
 since the codec falls back to Zstd in that case.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -23,9 +24,9 @@ pytestmark = pytest.mark.skipif(
         b"",
         b"\x00",
         b"\x07",
-        b"\x05" * 1000,            # single symbol
-        b"\x00\xff" * 5000,        # two symbols
-        bytes(range(256)) * 37,    # uniform alphabet
+        b"\x05" * 1000,  # single symbol
+        b"\x00\xff" * 5000,  # two symbols
+        bytes(range(256)) * 37,  # uniform alphabet
     ],
 )
 def test_roundtrip_fixed(buf):

@@ -21,6 +21,7 @@ ZipNN usage notes (verified in this repo's environment):
 
 z4ai usage: ``z4ai.compress(data, dtype=...)`` / ``z4ai.decompress(blob)``.
 """
+
 from __future__ import annotations
 
 import os
@@ -50,9 +51,9 @@ except Exception:  # noqa: BLE001
 # Config
 # ----------------------------------------------------------------------------
 SEED = 1234
-TIMED_RUNS = 5          # median of >= 5 timed runs
+TIMED_RUNS = 5  # median of >= 5 timed runs
 WARMUP_RUNS = 1
-TARGET_MB = 64.0        # nominal size for synthetic dense/sparse/etc.
+TARGET_MB = 64.0  # nominal size for synthetic dense/sparse/etc.
 
 # z4ai dtype code -> zipnn bytearray_dtype string for input_format='byte'
 _ZIPNN_BYTE_DTYPE = {
@@ -102,8 +103,9 @@ def gen_dense_random(rng: np.random.Generator, target_mb: float) -> np.ndarray:
     pos = 0
     # ~256 tensors of varying length to look like a transformer's parameter set
     n_tensors = 256
-    sizes = rng.integers(n_total // (n_tensors * 4), n_total // (n_tensors // 4) + 1,
-                         size=n_tensors)
+    sizes = rng.integers(
+        n_total // (n_tensors * 4), n_total // (n_tensors // 4) + 1, size=n_tensors
+    )
     sizes = (sizes * (n_total / sizes.sum())).astype(np.int64)
     sizes[-1] += n_total - int(sizes.sum())
     for sz in sizes:
@@ -121,7 +123,9 @@ def gen_dense_random(rng: np.random.Generator, target_mb: float) -> np.ndarray:
     return out
 
 
-def gen_sparse(rng: np.random.Generator, target_mb: float, sparsity: float) -> np.ndarray:
+def gen_sparse(
+    rng: np.random.Generator, target_mb: float, sparsity: float
+) -> np.ndarray:
     """Pruned model: `sparsity` fraction set to exactly 0.0."""
     n = int(target_mb * 1e6 / 4)
     out = (rng.standard_normal(n) * 0.05).astype(np.float32)
@@ -135,8 +139,12 @@ def gen_duplicate_heavy(rng: np.random.Generator, target_mb: float) -> np.ndarra
     n = int(target_mb * 1e6 / 4)
     pool_tensor = 256 * 1024  # 1 MB per distinct fp32 tensor
     n_distinct = 8
-    pool = [(rng.standard_normal(pool_tensor) * 10.0 ** rng.uniform(-2.5, -0.5)).astype(np.float32)
-            for _ in range(n_distinct)]
+    pool = [
+        (rng.standard_normal(pool_tensor) * 10.0 ** rng.uniform(-2.5, -0.5)).astype(
+            np.float32
+        )
+        for _ in range(n_distinct)
+    ]
     out = np.empty(n, dtype=np.float32)
     pos = 0
     while pos < n:
@@ -219,7 +227,9 @@ def _extract_floats_from_torch_file(path: str) -> Optional[np.ndarray]:
             if not hasattr(t, "dtype"):
                 continue
             if t.dtype in (torch.float32, torch.float16, torch.bfloat16):
-                floats.append(t.detach().to(torch.float32).contiguous().reshape(-1).numpy())
+                floats.append(
+                    t.detach().to(torch.float32).contiguous().reshape(-1).numpy()
+                )
         if not floats:
             return None
         return np.concatenate(floats).astype(np.float32)
@@ -245,7 +255,9 @@ def run_z4ai(raw: bytes, dtype: str) -> dict:
     blob = z4ai.compress(raw, dtype=dtype)
     back = z4ai.decompress(blob)
     lossless = bytes(back) == raw
-    comp_t = _time_median(lambda: z4ai.compress(raw, dtype=dtype), TIMED_RUNS, WARMUP_RUNS)
+    comp_t = _time_median(
+        lambda: z4ai.compress(raw, dtype=dtype), TIMED_RUNS, WARMUP_RUNS
+    )
     decomp_t = _time_median(lambda: z4ai.decompress(blob), TIMED_RUNS, WARMUP_RUNS)
     mb = len(raw) / 1e6
     return {
@@ -274,9 +286,13 @@ def run_zipnn(raw: bytes, dtype: str) -> Optional[dict]:
     ratio = len(raw) / len(blob)
 
     zn_c = make_zn()
-    comp_t = _time_median(lambda: zn_c.compress(bytearray(raw)), TIMED_RUNS, WARMUP_RUNS)
+    comp_t = _time_median(
+        lambda: zn_c.compress(bytearray(raw)), TIMED_RUNS, WARMUP_RUNS
+    )
     zn_d = make_zn()
-    decomp_t = _time_median(lambda: zn_d.decompress(bytearray(blob)), TIMED_RUNS, WARMUP_RUNS)
+    decomp_t = _time_median(
+        lambda: zn_d.decompress(bytearray(blob)), TIMED_RUNS, WARMUP_RUNS
+    )
     mb = len(raw) / 1e6
     return {
         "ratio": ratio,
@@ -294,15 +310,17 @@ def build_scenarios(target_mb: float) -> List[Tuple[str, List[str], np.ndarray]]
     rng = np.random.default_rng(SEED)
     scenarios: List[Tuple[str, List[str], np.ndarray]] = []
 
-    scenarios.append(("dense_random", ["bf16", "fp16", "fp32"],
-                      gen_dense_random(rng, target_mb)))
+    scenarios.append(
+        ("dense_random", ["bf16", "fp16", "fp32"], gen_dense_random(rng, target_mb))
+    )
     for sp, tag in [(0.50, "50"), (0.90, "90"), (0.99, "99")]:
-        scenarios.append((f"sparse_{tag}", ["bf16", "fp32"],
-                          gen_sparse(rng, target_mb, sp)))
-    scenarios.append(("duplicate_heavy", ["bf16", "fp32"],
-                      gen_duplicate_heavy(rng, target_mb)))
-    scenarios.append(("lora_like", ["bf16", "fp32"],
-                      gen_lora_like(rng, target_mb)))
+        scenarios.append(
+            (f"sparse_{tag}", ["bf16", "fp32"], gen_sparse(rng, target_mb, sp))
+        )
+    scenarios.append(
+        ("duplicate_heavy", ["bf16", "fp32"], gen_duplicate_heavy(rng, target_mb))
+    )
+    scenarios.append(("lora_like", ["bf16", "fp32"], gen_lora_like(rng, target_mb)))
 
     real = load_real_model()
     if real is not None:
@@ -310,16 +328,24 @@ def build_scenarios(target_mb: float) -> List[Tuple[str, List[str], np.ndarray]]
         # real fp32 weights -> also cast to bf16/fp16 to compare across dtypes
         scenarios.append((f"real:{label}", ["bf16", "fp16", "fp32"], weights))
     else:
-        print("[real_model] SKIPPED: no local blob and download unavailable (offline?).")
+        print(
+            "[real_model] SKIPPED: no local blob and download unavailable (offline?)."
+        )
     return scenarios
 
 
 HEADER = (
-    "scenario", "dtype", "size_MB",
-    "z4ai_ratio", "zipnn_ratio",
-    "z4ai_cMBps", "zipnn_cMBps",
-    "z4ai_dMBps", "zipnn_dMBps",
-    "z4ai_lossless", "zipnn_lossless",
+    "scenario",
+    "dtype",
+    "size_MB",
+    "z4ai_ratio",
+    "zipnn_ratio",
+    "z4ai_cMBps",
+    "zipnn_cMBps",
+    "z4ai_dMBps",
+    "zipnn_dMBps",
+    "z4ai_lossless",
+    "zipnn_lossless",
 )
 
 
@@ -332,8 +358,10 @@ def _fmt_row(vals) -> str:
 
 
 def main(target_mb: float = TARGET_MB) -> List[dict]:
-    print(f"z4ai vs ZipNN production benchmark | seed={SEED} | "
-          f"median of {TIMED_RUNS} runs | target ~{target_mb:.0f} MB/scenario")
+    print(
+        f"z4ai vs ZipNN production benchmark | seed={SEED} | "
+        f"median of {TIMED_RUNS} runs | target ~{target_mb:.0f} MB/scenario"
+    )
     print(f"ZipNN available: {_HAVE_ZIPNN}")
     print()
     print(_fmt_row(HEADER))
@@ -352,20 +380,36 @@ def main(target_mb: float = TARGET_MB) -> List[dict]:
                 return f"{d[k]:.3f}" if d else default
 
             row = {
-                "scenario": name, "dtype": dtype, "size_MB": round(mb, 2),
-                "z4ai_ratio": z["ratio"], "zipnn_ratio": zn["ratio"] if zn else None,
-                "z4ai_comp_MBps": z["comp_mbps"], "zipnn_comp_MBps": zn["comp_mbps"] if zn else None,
-                "z4ai_decomp_MBps": z["decomp_mbps"], "zipnn_decomp_MBps": zn["decomp_mbps"] if zn else None,
-                "z4ai_lossless": z["lossless"], "zipnn_lossless": zn["lossless"] if zn else None,
+                "scenario": name,
+                "dtype": dtype,
+                "size_MB": round(mb, 2),
+                "z4ai_ratio": z["ratio"],
+                "zipnn_ratio": zn["ratio"] if zn else None,
+                "z4ai_comp_MBps": z["comp_mbps"],
+                "zipnn_comp_MBps": zn["comp_mbps"] if zn else None,
+                "z4ai_decomp_MBps": z["decomp_mbps"],
+                "zipnn_decomp_MBps": zn["decomp_mbps"] if zn else None,
+                "z4ai_lossless": z["lossless"],
+                "zipnn_lossless": zn["lossless"] if zn else None,
             }
             rows.append(row)
-            print(_fmt_row((
-                name, dtype, f"{mb:.2f}",
-                f"{z['ratio']:.3f}", g(zn, "ratio"),
-                f"{z['comp_mbps']:.1f}", g(zn, "comp_mbps"),
-                f"{z['decomp_mbps']:.1f}", g(zn, "decomp_mbps"),
-                str(z["lossless"]), str(zn["lossless"]) if zn else "n/a",
-            )))
+            print(
+                _fmt_row(
+                    (
+                        name,
+                        dtype,
+                        f"{mb:.2f}",
+                        f"{z['ratio']:.3f}",
+                        g(zn, "ratio"),
+                        f"{z['comp_mbps']:.1f}",
+                        g(zn, "comp_mbps"),
+                        f"{z['decomp_mbps']:.1f}",
+                        g(zn, "decomp_mbps"),
+                        str(z["lossless"]),
+                        str(zn["lossless"]) if zn else "n/a",
+                    )
+                )
+            )
     return rows
 
 

@@ -93,7 +93,9 @@ def main() -> None:
     try:
         from zipnn import ZipNN
 
-        nb, _ = _timed(lambda: ZipNN(bytearray_dtype="float32").compress(bytearray(raw)))
+        nb, _ = _timed(
+            lambda: ZipNN(bytearray_dtype="float32").compress(bytearray(raw))
+        )
         zipnn_ratio = len(raw) / len(nb)
     except Exception:
         zipnn_ratio = float("nan")
@@ -101,7 +103,9 @@ def main() -> None:
     print(f"  zstd-3 : ratio {zstd_ratio:.3f}")
     if zipnn_ratio == zipnn_ratio:
         print(f"  zipnn  : ratio {zipnn_ratio:.3f}")
-    print(f"  z4ai   : ratio {z4ai_ratio:.3f}   compress {zc:.0f}ms  decompress {zd:.0f}ms")
+    print(
+        f"  z4ai   : ratio {z4ai_ratio:.3f}   compress {zc:.0f}ms  decompress {zd:.0f}ms"
+    )
     if zipnn_ratio == zipnn_ratio:
         delta = (z4ai_ratio / zipnn_ratio - 1) * 100
         verdict = "WIN" if delta > 0 else "loss"

@@ -19,6 +19,7 @@ Usage:
     python benchmarks/real_model.py --model EleutherAI/pythia-70m
     python benchmarks/real_model.py --max-mb 64 --dtypes bf16 fp16 fp32
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,9 +41,9 @@ from zipnn_adapter import make_zipnn_codec  # noqa: E402
 # in order and use the first that downloads.  All are genuine trained models
 # (not random-init), so their weight statistics are representative.
 _DEFAULT_MODELS = [
-    "prajjwal1/bert-tiny",        # ~17 MB fp32, real BERT
-    "sshleifer/tiny-gpt2",        # ~ 2 MB, real-ish GPT2
-    "EleutherAI/pythia-70m",      # ~166 MB fp32, real transformer
+    "prajjwal1/bert-tiny",  # ~17 MB fp32, real BERT
+    "sshleifer/tiny-gpt2",  # ~ 2 MB, real-ish GPT2
+    "EleutherAI/pythia-70m",  # ~166 MB fp32, real transformer
 ]
 
 
@@ -129,8 +130,8 @@ def _mbps(n, s):
 
 
 def _run_codec(name, comp, decomp, data: bytes):
-    (c, c_s) = _timed(lambda: comp(bytearray(data)))
-    (d, d_s) = _timed(lambda: decomp(c))
+    c, c_s = _timed(lambda: comp(bytearray(data)))
+    d, d_s = _timed(lambda: decomp(c))
     csize = len(c) if isinstance(c, (bytes, bytearray)) else len(c[0])
     return {
         "name": name,
@@ -143,10 +144,14 @@ def _run_codec(name, comp, decomp, data: bytes):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--model", default=None, help="HF model id (default: try a small list)")
+    p.add_argument(
+        "--model", default=None, help="HF model id (default: try a small list)"
+    )
     p.add_argument("--dtypes", nargs="+", default=["bf16", "fp16", "fp32"])
     p.add_argument("--max-mb", type=float, default=48.0, help="cap fp32 weight bytes")
-    p.add_argument("--level", type=int, default=None, help="z4ai/zstd level (None=default)")
+    p.add_argument(
+        "--level", type=int, default=None, help="z4ai/zstd level (None=default)"
+    )
     args = p.parse_args(argv)
 
     import z4ai
@@ -165,15 +170,18 @@ def main(argv=None):
         print("Could not load any model. Check network / model ids.")
         return 1
 
-    print(f"\nModel: {used_model}  ({weights.size:,} float params, "
-          f"{weights.nbytes/1e6:.1f} MB as fp32)\n")
+    print(
+        f"\nModel: {used_model}  ({weights.size:,} float params, "
+        f"{weights.nbytes/1e6:.1f} MB as fp32)\n"
+    )
 
     zlevel = 3 if args.level is None else args.level
     for dtype in args.dtypes:
         data = _to_dtype_bytes(weights, dtype)
         print(f"== {dtype}  ({len(data)/1e6:.1f} MB) ==")
         hdr = f"{'codec':<14}{'ratio':>9}{'comp MB/s':>12}{'decomp MB/s':>14}{'lossless':>10}"
-        print(hdr); print("-" * len(hdr))
+        print(hdr)
+        print("-" * len(hdr))
         rows = []
 
         cc = zstd.ZstdCompressor(level=zlevel, threads=-1)
@@ -182,6 +190,7 @@ def main(argv=None):
 
         def zc(b):
             return z4ai.compress(b, dtype=dtype, level=args.level)
+
         rows.append(_run_codec("z4ai", zc, z4ai.decompress, data))
 
         zcomp, zdecomp, ok = make_zipnn_codec(dtype)
@@ -191,17 +200,21 @@ def main(argv=None):
             print("  (zipnn: no lossless path for this dtype in this env)")
 
         for r in rows:
-            print(f"{r['name']:<14}{r['ratio']:>9.3f}{r['comp_mbps']:>12.0f}"
-                  f"{r['decomp_mbps']:>14.0f}{('yes' if r['lossless'] else 'NO!'):>10}")
+            print(
+                f"{r['name']:<14}{r['ratio']:>9.3f}{r['comp_mbps']:>12.0f}"
+                f"{r['decomp_mbps']:>14.0f}{('yes' if r['lossless'] else 'NO!'):>10}"
+            )
 
         by = {r["name"]: r for r in rows}
         if "z4ai" in by and "zipnn" in by:
             z, b = by["z4ai"], by["zipnn"]
             dr = (z["ratio"] / b["ratio"] - 1) * 100
             verdict = "WIN" if dr > 0.5 else ("TIE" if dr > -0.5 else "loss")
-            print(f"  -> z4ai vs zipnn ratio: {dr:+.1f}%  [{verdict}]   "
-                  f"(comp {z['comp_mbps']/b['comp_mbps']:.2f}x, "
-                  f"decomp {z['decomp_mbps']/b['decomp_mbps']:.2f}x)")
+            print(
+                f"  -> z4ai vs zipnn ratio: {dr:+.1f}%  [{verdict}]   "
+                f"(comp {z['comp_mbps']/b['comp_mbps']:.2f}x, "
+                f"decomp {z['decomp_mbps']/b['decomp_mbps']:.2f}x)"
+            )
         print()
     return 0
 

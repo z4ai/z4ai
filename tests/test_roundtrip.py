@@ -6,6 +6,7 @@ These are written against API_CONTRACT.md and skip automatically until the
 core `z4ai` package is importable, so the suite is green throughout parallel
 development and turns into real coverage the moment core lands.
 """
+
 import numpy as np
 import pytest
 
@@ -15,6 +16,7 @@ FLOAT_DTYPES = ["bf16", "fp16", "fp32", "fp64"]
 
 
 # --- core losslessness --------------------------------------------------------
+
 
 @pytest.mark.parametrize("dtype", FLOAT_DTYPES)
 def test_roundtrip_float_dtypes(z4ai, dtype):
@@ -63,6 +65,7 @@ def test_roundtrip_random_bytes(z4ai):
 
 # --- frame / contract ---------------------------------------------------------
 
+
 def test_frame_has_magic(z4ai):
     blob = z4ai.compress(make_weights(1000, dtype="bf16"), dtype="bf16")
     assert bytes(blob[:4]) == b"Z4AI"
@@ -71,7 +74,9 @@ def test_frame_has_magic(z4ai):
 @pytest.mark.parametrize("level", [1, 3, 9, 19, 22])
 def test_levels_are_lossless(z4ai, level):
     data = make_weights(80_000, dtype="bf16", seed=4)
-    assert bytes(z4ai.decompress(z4ai.compress(data, dtype="bf16", level=level))) == data
+    assert (
+        bytes(z4ai.decompress(z4ai.compress(data, dtype="bf16", level=level))) == data
+    )
 
 
 @pytest.mark.parametrize("threads", [0, 1, 2])
@@ -90,6 +95,7 @@ def test_compresses_realistic_weights(z4ai):
 
 
 # --- ndarray helpers (optional in v1) -----------------------------------------
+
 
 def test_ndarray_helpers_if_present(z4ai):
     if not hasattr(z4ai, "compress_ndarray"):

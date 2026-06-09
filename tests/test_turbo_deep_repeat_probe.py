@@ -10,6 +10,7 @@ the entire plane-transpose ratio win. The bug was masked whenever the opaque
 whole-buffer fallback happened to win; this test constructs a case where it does
 NOT, so the probe regression fails loudly.
 """
+
 import numpy as np
 import pytest
 
@@ -37,7 +38,7 @@ def test_turbo_catches_deep_repeats_in_plane():
     """
     data = _deep_repeat_plus_noise()
     blob = turbo.compress(data, width=2, level=9)
-    assert turbo.decompress(blob) == data            # lossless first
+    assert turbo.decompress(blob) == data  # lossless first
     ratio = len(data) / len(blob)
     assert ratio > 1.5, f"deep-repeat plane was not compressed (ratio {ratio:.2f})"
 

@@ -68,9 +68,7 @@ def _as_bytes(data) -> bytes:
         return bytes(data)
     if isinstance(data, np.ndarray):
         return np.ascontiguousarray(data).tobytes()
-    raise TypeError(
-        f"expected bytes-like or numpy.ndarray, got {type(data).__name__}"
-    )
+    raise TypeError(f"expected bytes-like or numpy.ndarray, got {type(data).__name__}")
 
 
 def _xor(a: bytes, b: bytes) -> bytes:

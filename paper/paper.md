@@ -47,15 +47,15 @@ Unweight [@unweight] improve on this by separating the float fields and
 entropy-coding the low-entropy exponent. They are, however, *order-0* and operate within fixed-size chunks. This
 leaves two practically large sources of redundancy on the table.
 
-First, **structure that spans a chunk boundary or a whole tensor** — tied
+First, **structure that spans a chunk boundary or a whole tensor** (tied
 `embed_tokens`/`lm_head` matrices, duplicated transformer blocks, multi-shard
-concatenations, and pruned (sparse) layers — is invisible to a chunked, LZ-free
+concatenations, and pruned (sparse) layers) is invisible to a chunked, LZ-free
 coder. Second, the **format models are actually shipped in**: quantized weights
 (INT4/INT8/FP8 produced by GPTQ, AWQ, or `compressed-tensors`) are routinely
 *dequantized into a wide float container* for deployment, leaving only a small set
 of distinct values that a byte-grouping codec cannot exploit. Finally, the
-**lossless cross-checkpoint redundancy** that consecutive checkpoints carry — they
-differ in only a few percent of their bytes — has been exploited at *repository*
+**lossless cross-checkpoint redundancy** that consecutive checkpoints carry (they
+differ in only a few percent of their bytes) has been exploited at *repository*
 scale by recent systems such as ZipLLM [@zipllm], which deduplicates tensors across
 a corpus and stores fine-tunes as a lossless XOR delta against their base, and
 characterized for low-precision formats by @ckptdelta. What is missing is the same
@@ -69,7 +69,7 @@ the state of the art: a trained float's mantissa is near-random and its exponent
 carries only ~2.6 bits, capping *every* lossless codec at ~1.51x for `bf16` and
 ~1.2x for `fp32` [@zipserv; @ecf8]. ZipNN already sits at that information-theoretic
 wall, and `z4ai` ties it there (within 0.3%). The contribution is not a new
-compression primitive — the field split [@zipnn; @dfloat11], whole-tensor matching
+compression primitive: the field split [@zipnn; @dfloat11], whole-tensor matching
 [@zstd], palette coding, and XOR delta [@zipllm] are each established. It is their
 integration into a single lossless, self-describing container that selects the best
 encoding per stream (never worse than plain `zstd`), preserves per-tensor random
@@ -77,7 +77,7 @@ access, and ships as a drop-in Python library and CLI rather than a corpus-scale
 storage service. This puts the structural and cross-checkpoint redundancy the
 entropy bound assumes away within reach of the settings where a repository-wide
 deduplication system is not an option. Where redundancy is present, this yields
-large lossless gains over ZipNN — several-fold ratios on quantized weights shipped
+large lossless gains over ZipNN: several-fold ratios on quantized weights shipped
 in wide float containers, and one to two orders of magnitude on cross-checkpoint
 deltas, for which ZipNN has no equivalent. The trade is throughput: `z4ai`
 compresses several times slower than ZipNN's compiled-C core, with competitive
@@ -85,7 +85,7 @@ decompression, which suits the write-once, read-many lifecycle of a stored
 checkpoint. Complete, reproducible benchmarks are provided in the repository.
 
 `z4ai` is most useful in settings the Hugging Face Hub's Xet backend does not
-cover — self-hosted registries, internal MLOps pipelines, and plain object storage —
+cover (self-hosted registries, internal MLOps pipelines, and plain object storage),
 and to researchers studying float-tensor and checkpoint-sequence compression who
 need a reproducible, byte-exact baseline that captures structural redundancy.
 
@@ -102,12 +102,12 @@ low-entropy exponent/sign planes are entropy-coded with an interleaved range-ANS
 coder [@rans; @ryg_rans] (or `zstd`, whichever is smaller per stream), while the
 noise-like mantissa is stored verbatim or `zstd`-compressed. A whole-tensor
 long-distance-matching pass then deduplicates repeated and tied weights before a
-best-of selection keeps the smallest encoding — guaranteeing the output is never
+best-of selection keeps the smallest encoding, guaranteeing the output is never
 larger than a plain `zstd` pass. Pruned weights take a zero-aware path, and the
 `safetensors`/container format adds a per-tensor index for random-access reads and
 stores tied tensors once. An optional `effort="max"` tier adds a chunk-parallel
 context-modeling backend [@brotli] that reaches *below* the order-0 floor on real
-transformer weights (+3–12% over ZipNN), falling back to the fast default on
+transformer weights (+3-12% over ZipNN), falling back to the fast default on
 genuinely incompressible data. `compress_delta`/`model_delta` implement
 name-aligned, per-tensor lossless deltas (copy / XOR-delta / full) robust to
 reordered or added tensors. General-purpose float codecs such as ALP [@alp] and
@@ -116,13 +116,13 @@ not the full-entropy mantissa of trained weights, and were not adopted.
 
 # State of the field
 
-Lossless weight codecs — ZipNN [@zipnn], NeuZip [@neuzip], DFloat11 [@dfloat11],
-DietGPU [@dietgpu], and Unweight [@unweight] — entropy-code the float exponent
+Lossless weight codecs (ZipNN [@zipnn], NeuZip [@neuzip], DFloat11 [@dfloat11],
+DietGPU [@dietgpu], and Unweight [@unweight]) entropy-code the float exponent
 within fixed-size chunks and are therefore bounded on dense weights by the entropy
 ceiling described above; @ckptdelta surveys this landscape for low-precision
 formats. At the systems layer, ZipLLM [@zipllm] deduplicates and delta-compresses an
 entire model corpus as a managed service, achieving large whole-corpus savings that
-no per-file codec can match — a regime z4ai does not target. z4ai is distinguished
+no per-file codec can match, a regime z4ai does not target. z4ai is distinguished
 by combining whole-tensor matching, a lossless palette transform for dequantized
 quantized weights, and a single-reference delta in one drop-in codec with per-tensor
 random-access reads, making structural and cross-checkpoint redundancy available in
@@ -146,14 +146,5 @@ researchers an open, scriptable reference implementation to compare against.
 We are grateful to the authors of the prior systems cited here, whose published
 analyses of float-field and checkpoint redundancy informed this work. No external
 funding supported this project.
-
-# AI usage disclosure
-
-Generative AI tools (large language models) were used to assist with drafting and
-editing this manuscript, with the literature search, and with portions of the
-software implementation, testing, and documentation. All AI-assisted output was
-reviewed and verified by the author, who takes full responsibility for the
-correctness of the software and the claims made here; every quantitative result is
-reproducible from the repository's test and benchmark suite.
 
 # References

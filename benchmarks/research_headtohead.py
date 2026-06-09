@@ -21,6 +21,7 @@ Usage::
 Optional comparators (`pip install zipnn pcodec`) are used when importable and
 skipped otherwise — z4ai + zstd always run.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,8 +37,12 @@ import zstandard as zstd
 
 from z4ai import codec, safetensors as zst
 
-_ZMAP = {"F32": ("fp32", "<f4"), "F16": ("fp16", "<f2"), "BF16": ("bf16", None),
-         "F64": ("fp64", "<f8")}
+_ZMAP = {
+    "F32": ("fp32", "<f4"),
+    "F16": ("fp16", "<f2"),
+    "BF16": ("bf16", None),
+    "F64": ("fp64", "<f8"),
+}
 
 
 def _download(model: str, dst: str) -> str:
@@ -67,6 +72,7 @@ def _zstd(raw: bytes, level: int) -> int:
 def _zipnn(raw: bytes, code: str):
     try:
         from benchmarks.zipnn_adapter import make_zipnn_codec
+
         c, d, ok = make_zipnn_codec(code)
         if not ok:
             return None
@@ -78,6 +84,7 @@ def _zipnn(raw: bytes, code: str):
 def _pco(raw: bytes, npdt, level: int = 12):
     try:
         from pcodec import standalone as pco, ChunkConfig
+
         arr = np.frombuffer(raw, dtype=npdt)
         return len(pco.simple_compress(arr, ChunkConfig(compression_level=level)))
     except Exception:
@@ -92,18 +99,25 @@ def _entropy_decomp(raw: bytes):
 
     def h0(x, nb):
         c = np.bincount(x, minlength=1 << nb).astype(float)
-        p = c / c.sum(); p = p[p > 0]
+        p = c / c.sum()
+        p = p[p > 0]
         return float(-(p * np.log2(p)).sum())
 
-    prev = np.empty(n, np.uint8); prev[0] = 0; prev[1:] = exp[:-1].astype(np.uint8)
+    prev = np.empty(n, np.uint8)
+    prev[0] = 0
+    prev[1:] = exp[:-1].astype(np.uint8)
     tot = 0.0
     for ctx in range(32):
         s = exp[prev == ctx]
         if len(s):
-            c = np.bincount(s, minlength=32).astype(float); p = c / c.sum(); p = p[p > 0]
+            c = np.bincount(s, minlength=32).astype(float)
+            p = c / c.sum()
+            p = p[p > 0]
             tot += len(s) * float(-(p * np.log2(p)).sum())
-    print(f"  entropy/elem: sign H0={h0(sign,1):.3f}  exp H0={h0(exp,5):.3f} "
-          f"H1={tot/n:.3f}  mant H0={h0(mant,10):.3f}")
+    print(
+        f"  entropy/elem: sign H0={h0(sign,1):.3f}  exp H0={h0(exp,5):.3f} "
+        f"H1={tot/n:.3f}  mant H0={h0(mant,10):.3f}"
+    )
 
 
 def main() -> None:
@@ -119,8 +133,10 @@ def main() -> None:
 
     bydt = _parse(blob)
     mb_total = len(blob) / 1e6
-    print(f"\nmodel {args.model}: {mb_total:.0f} MB, dtypes "
-          f"{ {k: len(v) for k, v in bydt.items()} }")
+    print(
+        f"\nmodel {args.model}: {mb_total:.0f} MB, dtypes "
+        f"{ {k: len(v) for k, v in bydt.items()} }"
+    )
 
     # Per-dtype dense ratios.
     for dt, items in bydt.items():
@@ -132,9 +148,14 @@ def main() -> None:
         print(f"\n=== {dt}  {mb:.1f} MB ({len(items)} tensors) ===")
         if dt == "F16":
             _entropy_decomp(raw)
-        rows = [("zstd-3", _zstd(raw, 3)),
-                ("z4ai default", len(codec.compress(raw, dtype=code))),
-                ("z4ai escalate=19", len(codec.compress(raw, dtype=code, escalate_level=19)))]
+        rows = [
+            ("zstd-3", _zstd(raw, 3)),
+            ("z4ai default", len(codec.compress(raw, dtype=code))),
+            (
+                "z4ai escalate=19",
+                len(codec.compress(raw, dtype=code, escalate_level=19)),
+            ),
+        ]
         zn = _zipnn(raw, code) if code else None
         if zn:
             rows.insert(1, ("ZipNN", zn))
@@ -147,13 +168,18 @@ def main() -> None:
 
     # Whole-checkpoint (the production number).
     print(f"\n=== WHOLE CHECKPOINT {mb_total:.0f} MB (byte-exact) ===")
-    t = time.perf_counter(); frame = zst.compress_bytes(blob); dt = time.perf_counter() - t
+    t = time.perf_counter()
+    frame = zst.compress_bytes(blob)
+    dt = time.perf_counter() - t
     assert zst.decompress_bytes(frame) == blob, "ROUND-TRIP NOT LOSSLESS"
-    print(f"  z4ai safetensors   {mb_total/(len(frame)/1e6):7.3f}x  "
-          f"({mb_total/dt:.0f} MB/s compress, lossless verified)")
+    print(
+        f"  z4ai safetensors   {mb_total/(len(frame)/1e6):7.3f}x  "
+        f"({mb_total/dt:.0f} MB/s compress, lossless verified)"
+    )
     print(f"  zstd-3 whole file  {mb_total/(_zstd(blob,3)/1e6):7.3f}x")
     try:
         import zipnn
+
         z = zipnn.ZipNN(input_format="byte")
         c = z.compress(bytearray(blob))
         print(f"  ZipNN whole file   {mb_total/(len(bytes(c))/1e6):7.3f}x")

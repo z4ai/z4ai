@@ -7,6 +7,7 @@ Covers (1) standalone losslessness across widths / sparsity / edge cases,
 public ``z4ai.compress``/``decompress`` API, and (4) the ratio win that is the
 whole point of the mode.
 """
+
 import numpy as np
 import pytest
 
@@ -19,13 +20,14 @@ def _sparse_bytes(width, n, frac, seed=0):
     """Random fixed-width buffer with ``frac`` of elements set to exact zero."""
     rng = np.random.default_rng(seed)
     dt = WIDTH_DTYPE[width]
-    hi = 256 if width == 1 else 2 ** 31  # keep values in range, plenty of spread
+    hi = 256 if width == 1 else 2**31  # keep values in range, plenty of spread
     u = rng.integers(1, hi, size=n, dtype=np.uint64).astype(dt)
     u[rng.random(n) < frac] = 0
     return u.tobytes()
 
 
 # --- standalone losslessness --------------------------------------------------
+
 
 @pytest.mark.parametrize("width", [1, 2, 4, 8])
 @pytest.mark.parametrize("frac", [0.0, 0.25, 0.5, 0.9, 1.0])
@@ -43,11 +45,11 @@ def test_sparse_edge_cases(z4ai, width):
     from z4ai import sparse
 
     cases = [
-        b"",                              # empty
-        bytes(width),                     # single zero element
-        _sparse_bytes(width, 1, 0.0),     # single nonzero element
-        bytes(width * 1000),              # all zeros
-        b"\x01\x02\x03\x04\x05",          # length not a multiple of width (tail)
+        b"",  # empty
+        bytes(width),  # single zero element
+        _sparse_bytes(width, 1, 0.0),  # single nonzero element
+        bytes(width * 1000),  # all zeros
+        b"\x01\x02\x03\x04\x05",  # length not a multiple of width (tail)
     ]
     for data in cases:
         blob = sparse.compress(data, width)
@@ -84,11 +86,12 @@ def test_unsupported_width_raises(z4ai):
 
 # --- automatic selection through the public API -------------------------------
 
+
 def test_public_api_picks_sparse_and_roundtrips(z4ai):
     from z4ai import sparse
 
     rng = np.random.default_rng(1)
-    f = (rng.standard_normal(400_000).astype(np.float32) * 0.02)
+    f = rng.standard_normal(400_000).astype(np.float32) * 0.02
     f[rng.random(400_000) < 0.9] = 0.0
     data = f32_to_bf16_bytes(f)
 
@@ -126,7 +129,7 @@ def test_sparse_beats_dense_path(z4ai, frac):
     from z4ai import sparse
 
     rng = np.random.default_rng(int(frac * 100))
-    f = (rng.standard_normal(1_000_000).astype(np.float32) * 0.02)
+    f = rng.standard_normal(1_000_000).astype(np.float32) * 0.02
     f[rng.random(1_000_000) < frac] = 0.0
     data = f32_to_bf16_bytes(f)
 

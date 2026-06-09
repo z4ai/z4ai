@@ -11,6 +11,7 @@ Honest framing (see README "Production guidance"): lossless bf16/fp32 ratio is
 near the entropy floor for *all* methods (~1.5x bf16), so the differentiator is
 throughput.  This benchmark exists to track that axis.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -55,6 +56,7 @@ def main() -> None:
     print(f"native codec active: {ck._native is not None}")
     try:
         import zipnn  # noqa: F401
+
         have_zipnn = True
     except Exception:  # noqa: BLE001
         have_zipnn = False
@@ -67,19 +69,26 @@ def main() -> None:
         td, out = _best(lambda: ck.decompress(blob))
         assert bytes(out) == raw, "z4ai round-trip mismatch"
         print(f"\n{dt}  {mb:.0f} MB")
-        print(f"  z4ai-native  ratio {len(raw)/len(blob):6.3f}  "
-              f"comp {mb/tc/1000:5.2f}  decomp {mb/td/1000:5.2f} GB/s")
+        print(
+            f"  z4ai-native  ratio {len(raw)/len(blob):6.3f}  "
+            f"comp {mb/tc/1000:5.2f}  decomp {mb/td/1000:5.2f} GB/s"
+        )
         if have_zipnn and dt in _ZIPNN_DT:
             import zipnn
+
             z = zipnn.ZipNN(bytearray_dtype=_ZIPNN_DT[dt])
             tzc, zb = _best(lambda: z.compress(bytearray(raw)))
             tzd, zo = _best(lambda: z.decompress(zb))
             assert bytes(zo) == raw
-            print(f"  zipnn        ratio {len(raw)/len(zb):6.3f}  "
-                  f"comp {mb/tzc/1000:5.2f}  decomp {mb/tzd/1000:5.2f} GB/s")
+            print(
+                f"  zipnn        ratio {len(raw)/len(zb):6.3f}  "
+                f"comp {mb/tzc/1000:5.2f}  decomp {mb/tzd/1000:5.2f} GB/s"
+            )
         tzs, zsb = _best(lambda: zstd.ZstdCompressor(level=3).compress(raw))
-        print(f"  zstd-3       ratio {len(raw)/len(zsb):6.3f}  "
-              f"comp {mb/tzs/1000:5.2f}  decomp   n/a GB/s")
+        print(
+            f"  zstd-3       ratio {len(raw)/len(zsb):6.3f}  "
+            f"comp {mb/tzs/1000:5.2f}  decomp   n/a GB/s"
+        )
 
 
 if __name__ == "__main__":

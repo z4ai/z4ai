@@ -44,6 +44,7 @@ Example::
     >>> restored = model_delta.decompress(blob, base_safetensors)
     >>> assert restored == finetuned_safetensors   # byte-identical
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -57,9 +58,9 @@ MAGIC = b"Z4DM"
 _VERSION = 1
 
 # Per-tensor record kinds.
-_K_FULL = 0   # standalone z4ai frame (no usable base match)
+_K_FULL = 0  # standalone z4ai frame (no usable base match)
 _K_DELTA = 1  # z4ai.delta frame of (target XOR base) for the same-named tensor
-_K_COPY = 2   # byte-identical to the base tensor; payload omitted
+_K_COPY = 2  # byte-identical to the base tensor; payload omitted
 
 _U16 = struct.Struct("<H")
 _U32 = struct.Struct("<I")

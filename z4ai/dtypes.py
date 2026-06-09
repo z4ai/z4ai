@@ -20,22 +20,22 @@ from __future__ import annotations
 from typing import Dict, Optional
 
 # --- transform codes (serialized in the frame header) -----------------------
-TRANSFORM_NONE = 0       # single opaque stream
+TRANSFORM_NONE = 0  # single opaque stream
 TRANSFORM_BYTEPLANE = 1  # byte-grouping / transpose (z4ai.transforms)
-TRANSFORM_BITFIELD = 2   # sign/exp/mantissa field split (z4ai.bitfield)
+TRANSFORM_BITFIELD = 2  # sign/exp/mantissa field split (z4ai.bitfield)
 
 # --- dtype codes (serialized in the frame header) ---------------------------
-RAW = 0          # opaque uint8, no transform
-FP8_E4M3 = 1     # 1 byte, no transform
-FP8_E5M2 = 2     # 1 byte, no transform
-FP16 = 3         # IEEE binary16, byte-plane split
-BF16 = 4         # bfloat16, bit-field split (the headline edge over ZipNN)
-FP32 = 5         # IEEE binary32, byte-plane split
-FP64 = 6         # IEEE binary64, byte-plane split
-INT8 = 7         # 1 byte, no transform
-INT16 = 8        # byte-plane split
-INT32 = 9        # byte-plane split
-INT64 = 10       # byte-plane split
+RAW = 0  # opaque uint8, no transform
+FP8_E4M3 = 1  # 1 byte, no transform
+FP8_E5M2 = 2  # 1 byte, no transform
+FP16 = 3  # IEEE binary16, byte-plane split
+BF16 = 4  # bfloat16, bit-field split (the headline edge over ZipNN)
+FP32 = 5  # IEEE binary32, byte-plane split
+FP64 = 6  # IEEE binary64, byte-plane split
+INT8 = 7  # 1 byte, no transform
+INT16 = 8  # byte-plane split
+INT32 = 9  # byte-plane split
+INT64 = 10  # byte-plane split
 
 
 class DTypeInfo:

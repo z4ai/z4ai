@@ -26,9 +26,11 @@ from z4ai import format as zfmt
 
 def _fp16_weights(n: int = 16_000_000, scale: float = 0.02, seed: int = 0) -> bytes:
     rng = np.random.default_rng(seed)
-    return (rng.standard_normal(n).astype(np.float32) * np.float32(scale)).astype(
-        np.float16
-    ).tobytes()
+    return (
+        (rng.standard_normal(n).astype(np.float32) * np.float32(scale))
+        .astype(np.float16)
+        .tobytes()
+    )
 
 
 def _plane_methods(frame: bytes):
@@ -71,9 +73,11 @@ def test_structured_plane_still_keeps_ldm_frame() -> None:
     so the best-of keeps ``METHOD_ZSTD`` and the long-range dedup win is intact.
     """
     rng = np.random.default_rng(7)
-    base = (rng.standard_normal(1_000_000).astype(np.float32) * np.float32(0.02)).astype(
-        np.float16
-    ).tobytes()
+    base = (
+        (rng.standard_normal(1_000_000).astype(np.float32) * np.float32(0.02))
+        .astype(np.float16)
+        .tobytes()
+    )
     raw = base * 16  # 16 identical layers -> long-range redundancy
     frame = z4ai.compress(raw, dtype="fp16")
     assert z4ai.decompress(frame) == raw

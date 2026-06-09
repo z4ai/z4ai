@@ -30,6 +30,7 @@ mechanism and is deterministic. Run:
     python benchmarks/bench_tied_embedding.py
     python benchmarks/bench_tied_embedding.py --vocab 32000 --d 768 --layers 6
 """
+
 from __future__ import annotations
 
 import argparse
@@ -45,7 +46,7 @@ def build_checkpoint(vocab: int, d: int, layers: int, seed: int = 0) -> bytes:
     rng = np.random.default_rng(seed)
     embed = rng.normal(0, 0.02, (vocab, d)).astype(np.float32)  # token embedding
     blocks = [
-        rng.normal(0, 0.02, (d, 4 * d)).astype(np.float32)      # dense per-layer
+        rng.normal(0, 0.02, (d, 4 * d)).astype(np.float32)  # dense per-layer
         for _ in range(layers)
     ]
     # lm_head is the SAME tensor as embed (weight tying) -> exact duplicate.
@@ -89,23 +90,29 @@ def main() -> None:
 
     raw = build_checkpoint(args.vocab, args.d, args.layers)
     mb = len(raw) / 1e6
-    print(f"checkpoint: {mb:.0f} MB fp32, tied embedding "
-          f"({args.vocab}x{args.d} = {args.vocab * args.d * 4 / 1e6:.0f} MB duplicated)")
+    print(
+        f"checkpoint: {mb:.0f} MB fp32, tied embedding "
+        f"({args.vocab}x{args.d} = {args.vocab * args.d * 4 / 1e6:.0f} MB duplicated)"
+    )
 
     blob = z4ai.compress(raw, dtype="fp32")
     lossless = bytes(z4ai.decompress(blob)) == raw
     z_ratio = len(raw) / len(blob)
     c = best_of(lambda: z4ai.compress(raw, dtype="fp32"))
     d = best_of(lambda: z4ai.decompress(blob))
-    print(f"z4ai : ratio={z_ratio:.3f}  lossless={lossless}  "
-          f"compress={mb / 1e3 / c:.2f} GB/s  decompress={mb / 1e3 / d:.2f} GB/s")
+    print(
+        f"z4ai : ratio={z_ratio:.3f}  lossless={lossless}  "
+        f"compress={mb / 1e3 / c:.2f} GB/s  decompress={mb / 1e3 / d:.2f} GB/s"
+    )
 
     zr, zok = zipnn_ratio(raw)
     if zr is not None:
         print(f"zipnn: ratio={zr:.3f}  lossless={zok}")
-        print(f"\n-> z4ai is {z_ratio / zr - 1:+.0%} vs ZipNN on ratio "
-              f"({len(blob) / 1e6:.0f} MB vs {len(raw) / zr / 1e6:.0f} MB). "
-              f"The dense part ties; the win is the deduped tied embedding.")
+        print(
+            f"\n-> z4ai is {z_ratio / zr - 1:+.0%} vs ZipNN on ratio "
+            f"({len(blob) / 1e6:.0f} MB vs {len(raw) / zr / 1e6:.0f} MB). "
+            f"The dense part ties; the win is the deduped tied embedding."
+        )
     else:
         print("zipnn: not installed (pip install zipnn) -- showing z4ai only")
 

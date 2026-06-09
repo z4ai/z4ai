@@ -8,6 +8,7 @@ that straddle / don't align to chunk and element sizes, empty input, every
 dtype width (including fp64 which ZipNN's byte path does not handle), and that
 forcing multiple small chunks still round-trips bit-exactly.
 """
+
 import numpy as np
 import pytest
 

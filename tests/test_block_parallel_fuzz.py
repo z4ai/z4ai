@@ -24,8 +24,15 @@ _BS = backend._DEFAULT_BLOCK_SIZE
 # Sizes that straddle the block boundary and the small-input edges.  Kept to a
 # couple of multiples of the (multi-MiB) block so the suite stays fast.
 _SIZES = [
-    0, 1, 3, 16, 4096, 4097,
-    _BS - 1, _BS, _BS + 1,
+    0,
+    1,
+    3,
+    16,
+    4096,
+    4097,
+    _BS - 1,
+    _BS,
+    _BS + 1,
     2 * _BS + 7,
 ]
 

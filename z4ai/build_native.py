@@ -20,6 +20,7 @@ accelerators can be built ad hoc on any machine that has a C compiler. If a
 build fails or no compiler is present, z4ai still works — :mod:`z4ai._accel`
 falls back to the NumPy transpose and :mod:`z4ai.chunked` to pure Python.
 """
+
 from __future__ import annotations
 
 import os
@@ -87,11 +88,18 @@ def _zstd_flags():
         except Exception:  # noqa: BLE001
             pass
     # 2) Homebrew / common prefixes.
-    for prefix in ("/opt/homebrew/opt/zstd", "/opt/homebrew", "/usr/local",
-                   "/usr/local/opt/zstd"):
+    for prefix in (
+        "/opt/homebrew/opt/zstd",
+        "/opt/homebrew",
+        "/usr/local",
+        "/usr/local/opt/zstd",
+    ):
         if os.path.exists(os.path.join(prefix, "include", "zstd.h")):
-            return ([os.path.join(prefix, "include")],
-                    [os.path.join(prefix, "lib")], ["zstd"])
+            return (
+                [os.path.join(prefix, "include")],
+                [os.path.join(prefix, "lib")],
+                ["zstd"],
+            )
     # 3) System default search path (e.g. Linux distro -dev package).
     for inc in ("/usr/include/zstd.h", "/usr/include/x86_64-linux-gnu/zstd.h"):
         if os.path.exists(inc):
@@ -112,8 +120,10 @@ def build_codec(verbose: bool = True):
     flags = _zstd_flags()
     if flags is None:
         if verbose:
-            print("zstd dev headers not found; skipping _native_codec "
-                  "(chunked path will use pure Python)")
+            print(
+                "zstd dev headers not found; skipping _native_codec "
+                "(chunked path will use pure Python)"
+            )
         return None
     inc, libdir, lib = flags
 

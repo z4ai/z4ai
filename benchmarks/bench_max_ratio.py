@@ -16,6 +16,7 @@ Run::
 Numbers are reproducible from the cached HF models; nothing is hand-edited into
 the docs without coming from this script (see COORDINATION.md integrity rule).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -34,6 +35,7 @@ import z4ai
 
 try:
     import zipnn as _zipnn
+
     _HAVE_ZIPNN = True
 except Exception:  # noqa: BLE001
     _HAVE_ZIPNN = False
@@ -75,14 +77,21 @@ def _bench_one(name: str, raw: bytes, dtype: str) -> None:
 
     # ZipNN
     if _HAVE_ZIPNN:
-        zdt = {"bf16": "bfloat16", "fp16": "float16", "fp32": "float32"}.get(dtype, "float32")
+        zdt = {"bf16": "bfloat16", "fp16": "float16", "fp32": "float32"}.get(
+            dtype, "float32"
+        )
         comp = _zipnn.ZipNN(bytearray_dtype=zdt)
         blob, cs = _timed(lambda: comp.compress(bytearray(raw)))
         add("zipnn       ", blob, cs, lambda b=blob: comp.decompress(b))
 
     # plain zstd-3 (reference floor)
     blob, cs = _timed(lambda: _zstd.ZstdCompressor(level=3).compress(raw))
-    add("zstd-3      ", blob, cs, lambda b=blob: _zstd.ZstdDecompressor().decompress(b, max_output_size=n))
+    add(
+        "zstd-3      ",
+        blob,
+        cs,
+        lambda b=blob: _zstd.ZstdDecompressor().decompress(b, max_output_size=n),
+    )
 
     print(f"  {'codec':14s} {'ratio':>7s} {'compress':>12s} {'decompress':>12s}")
     base = next((r for r in rows if r[0].startswith("zipnn")), None)
@@ -95,7 +104,9 @@ def _bench_one(name: str, raw: bytes, dtype: str) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--models", nargs="*", default=["distilgpt2", "EleutherAI/pythia-70m"])
+    ap.add_argument(
+        "--models", nargs="*", default=["distilgpt2", "EleutherAI/pythia-70m"]
+    )
     ap.add_argument("--max-mb", type=int, default=48)
     ap.add_argument("--dtypes", nargs="*", default=["bf16", "fp32"])
     args = ap.parse_args()
@@ -111,7 +122,7 @@ def main() -> None:
 
     # i.i.d. control: the entropy-floor case where NOTHING beats the floor much.
     rng = np.random.default_rng(0)
-    iid = (rng.standard_normal(8_000_000).astype(np.float32) * 0.02)
+    iid = rng.standard_normal(8_000_000).astype(np.float32) * 0.02
     _bench_one("i.i.d. gaussian (control)", _f32_to_bf16_bytes(iid), "bf16")
 
 

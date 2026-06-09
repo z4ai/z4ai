@@ -132,10 +132,10 @@ class SplitResult:
     """Container for the three field streams plus the metadata to invert them."""
 
     spec_name: str
-    count: int          # number of elements
-    sign: bytes         # bit-packed sign bits, ceil(count/8) bytes
-    exponent: bytes     # count bytes, one exponent integer each
-    mantissa: bytes     # count * mantissa_bytes bytes, byte-split planes
+    count: int  # number of elements
+    sign: bytes  # bit-packed sign bits, ceil(count/8) bytes
+    exponent: bytes  # count bytes, one exponent integer each
+    mantissa: bytes  # count * mantissa_bytes bytes, byte-split planes
 
     def as_streams(self) -> Dict[str, bytes]:
         return {"sign": self.sign, "exponent": self.exponent, "mantissa": self.mantissa}
@@ -225,8 +225,7 @@ def split_fields(data, dtype=None) -> SplitResult:
         mant_bytes = b""
     else:
         planes = [
-            ((mantissa >> (8 * k)) & 0xFF).astype(np.uint8).tobytes()
-            for k in range(mb)
+            ((mantissa >> (8 * k)) & 0xFF).astype(np.uint8).tobytes() for k in range(mb)
         ]
         mant_bytes = b"".join(planes)
 
@@ -284,11 +283,7 @@ def join_fields(result: SplitResult) -> bytes:
             plane = flat[k * count : (k + 1) * count].astype(udt)
             mant |= plane << (8 * k)
 
-    u = (
-        (sign << (spec.total_bits - 1))
-        | (exponent << spec.mantissa_bits)
-        | mant
-    )
+    u = (sign << (spec.total_bits - 1)) | (exponent << spec.mantissa_bits) | mant
     out = u.astype(f"<{udt.char}")
     return out.tobytes()
 

@@ -11,6 +11,7 @@ opaque LDM candidate and fell *below* plain Zstd on structured weights (20.7x vs
   2. On structured weights, z4ai is never worse than a plain whole-buffer Zstd
      pass, and crushes a fixed-chunk codec - which is the headline claim.
 """
+
 import zstandard as zstd
 
 from _data import make_scenario
@@ -51,7 +52,9 @@ def test_structured_large_ratio_win(z4ai):
     a fixed-256KiB-chunk codec's reach (ZipNN gets ~1.5x here)."""
     data = make_scenario("structured", 6_000_000, "bf16", seed=2)
     ratio = len(data) / len(z4ai.compress(data, dtype="bf16"))
-    assert ratio > 10.0, f"expected a large LDM win on structured weights, got {ratio:.1f}x"
+    assert (
+        ratio > 10.0
+    ), f"expected a large LDM win on structured weights, got {ratio:.1f}x"
 
 
 def test_iid_ratio_unchanged_by_detector(z4ai):

@@ -6,6 +6,7 @@ Covers losslessness across dtypes / edge cases, the self-describing frame, the
 effort levels, NumPy round-trips, and -- crucially -- that AUTO never loses to
 plain zstd and (when installed) beats or ties ZipNN on structured tensors.
 """
+
 import numpy as np
 import pytest
 
@@ -18,6 +19,7 @@ EFFORTS = ["fast", "balanced", "max"]
 
 
 # --- losslessness -------------------------------------------------------------
+
 
 @pytest.mark.parametrize("dtype", FLOAT_DTYPES + [None])
 @pytest.mark.parametrize("effort", EFFORTS)
@@ -64,6 +66,7 @@ def test_roundtrip_random_bytes():
 
 # --- frame / contract ---------------------------------------------------------
 
+
 def test_frame_has_magic():
     blob = auto.compress(make_weights(1000, dtype="bf16"), dtype="bf16")
     assert bytes(blob[:4]) == b"ZARA"
@@ -85,6 +88,7 @@ def test_out_buffer_too_small_raises():
 
 # --- numpy round-trips --------------------------------------------------------
 
+
 @pytest.mark.parametrize("np_dtype", [np.float32, np.float16, np.float64, np.int32])
 def test_ndarray_roundtrip(np_dtype):
     arr = (np.random.default_rng(7).standard_normal((48, 96)) * 0.1).astype(np_dtype)
@@ -96,12 +100,13 @@ def test_ndarray_roundtrip(np_dtype):
 
 # --- ratio claims (the whole point) -------------------------------------------
 
+
 def test_beats_plain_zstd_on_structured_data():
     """On structured (repeated-value) weights AUTO must beat plain zstd-19."""
     import zstandard as zstd
 
     rng = np.random.default_rng(0)
-    book = (rng.standard_normal(256).astype(np.float32) * 0.02)
+    book = rng.standard_normal(256).astype(np.float32) * 0.02
     data = f32_to_bf16_bytes(book[rng.integers(0, 256, 400_000)])
     auto_size = len(auto.compress(data, dtype="bf16", effort="max"))
     zstd_size = len(zstd.ZstdCompressor(level=19).compress(data))
@@ -136,7 +141,7 @@ def test_beats_or_ties_zipnn_if_installed():
     zipnn = pytest.importorskip("zipnn")
     rng = np.random.default_rng(0)
     # structured tensor: many repeated values -> zipnn's mandatory grouping hurts
-    book = (rng.standard_normal(256).astype(np.float32) * 0.02)
+    book = rng.standard_normal(256).astype(np.float32) * 0.02
     data = f32_to_bf16_bytes(book[rng.integers(0, 256, 400_000)])
 
     auto_size = len(auto.compress(data, dtype="bf16", effort="max"))

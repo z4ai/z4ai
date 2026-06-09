@@ -19,6 +19,7 @@ loudly here instead of shipping.
 
 See ``DECISIONS.md`` -> "The one number that matters".
 """
+
 import numpy as np
 import pytest
 
@@ -31,8 +32,12 @@ import z4ai
 _LDM_FLOOR = 1.8
 
 
-def _tied_layer_weights(seed: int = 0, n_unique_blocks: int = 3,
-                        n_total_blocks: int = 12, block_elems: int = 262_144):
+def _tied_layer_weights(
+    seed: int = 0,
+    n_unique_blocks: int = 3,
+    n_total_blocks: int = 12,
+    block_elems: int = 262_144,
+):
     """fp32 bytes whose redundancy is *far-apart repeated runs*, like tied layers.
 
     A pool of a few distinct **large** (~1 MiB) random blocks is sampled with
@@ -43,7 +48,9 @@ def _tied_layer_weights(seed: int = 0, n_unique_blocks: int = 3,
     variant fits inside zstd's window and would NOT detect an LDM regression.)
     """
     rng = np.random.default_rng(seed)
-    pool = (rng.standard_normal((n_unique_blocks, block_elems)) * 0.05).astype(np.float32)
+    pool = (rng.standard_normal((n_unique_blocks, block_elems)) * 0.05).astype(
+        np.float32
+    )
     order = rng.integers(0, n_unique_blocks, size=n_total_blocks)
     return pool[order].reshape(-1).tobytes()
 
@@ -51,7 +58,7 @@ def _tied_layer_weights(seed: int = 0, n_unique_blocks: int = 3,
 def test_ldm_win_is_lossless_and_large():
     """Default compress must dedup repeated runs (LDM) and stay byte-exact."""
     raw = _tied_layer_weights()
-    blob = z4ai.compress(raw, dtype="fp32")          # DEFAULT settings only
+    blob = z4ai.compress(raw, dtype="fp32")  # DEFAULT settings only
     back = z4ai.decompress(blob)
     assert bytes(back) == raw, "LDM path must remain bit-exact"
 

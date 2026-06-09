@@ -14,10 +14,10 @@ import pytest
 
 from z4ai import bitfield as bf
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _roundtrip_raw(raw: bytes, spec_name: str) -> bytes:
     res = bf.split_fields(raw, dtype=spec_name)
@@ -34,6 +34,7 @@ def _bf16_from_float32(arr32: np.ndarray) -> np.ndarray:
 # float32 / float16 native round-trips
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("dtype", ["float32", "float16"])
 def test_roundtrip_native_random(dtype):
     rng = np.random.default_rng(1234)
@@ -49,8 +50,18 @@ def test_roundtrip_native_random(dtype):
 @pytest.mark.parametrize("dtype", ["float32", "float16"])
 def test_special_values(dtype):
     specials = np.array(
-        [0.0, -0.0, 1.0, -1.0, np.inf, -np.inf, np.nan,
-         np.finfo(dtype).tiny, np.finfo(dtype).max, -np.finfo(dtype).max],
+        [
+            0.0,
+            -0.0,
+            1.0,
+            -1.0,
+            np.inf,
+            -np.inf,
+            np.nan,
+            np.finfo(dtype).tiny,
+            np.finfo(dtype).max,
+            -np.finfo(dtype).max,
+        ],
         dtype=dtype,
     )
     out = bf.join_fields(bf.split_fields(specials))
@@ -60,6 +71,7 @@ def test_special_values(dtype):
 # ---------------------------------------------------------------------------
 # bfloat16 (raw uint16) round-trips
 # ---------------------------------------------------------------------------
+
 
 def test_roundtrip_bfloat16_random():
     rng = np.random.default_rng(99)
@@ -81,6 +93,7 @@ def test_bfloat16_via_uint16_array():
 # Edge cases
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize("dtype", ["float32", "float16", "bfloat16"])
 def test_empty(dtype):
     raw = b""
@@ -92,7 +105,7 @@ def test_empty(dtype):
 @pytest.mark.parametrize("dtype", ["float32", "float16", "bfloat16"])
 def test_single_element(dtype):
     spec = bf.SPECS[dtype]
-    raw = (b"\xAB" * spec.itemsize)
+    raw = b"\xab" * spec.itemsize
     assert _roundtrip_raw(raw, dtype) == raw
 
 
@@ -115,23 +128,29 @@ def test_raw_bytes_requires_dtype():
 # Stream shape invariants - the sign stream really is 8x smaller, etc.
 # ---------------------------------------------------------------------------
 
+
 def test_stream_sizes():
     n = 1000
     arr = np.ones(n, dtype="float32")
     res = bf.split_fields(arr)
-    assert len(res.exponent) == n                 # one byte per element
-    assert len(res.sign) == (n + 7) // 8          # bit-packed
-    assert len(res.mantissa) == n * 3             # 23 mantissa bits -> 3 bytes
+    assert len(res.exponent) == n  # one byte per element
+    assert len(res.sign) == (n + 7) // 8  # bit-packed
+    assert len(res.mantissa) == n * 3  # 23 mantissa bits -> 3 bytes
 
 
 def test_aliases_resolve():
-    for alias, canon in [("fp32", "float32"), ("bf16", "bfloat16"), ("half", "float16")]:
+    for alias, canon in [
+        ("fp32", "float32"),
+        ("bf16", "bfloat16"),
+        ("half", "float16"),
+    ]:
         assert bf.resolve_spec(alias).name == canon
 
 
 # ---------------------------------------------------------------------------
 # Fuzz: many random buffers, all formats, must be byte-exact.
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("dtype", ["float32", "float16", "bfloat16"])
 @pytest.mark.parametrize("seed", range(8))

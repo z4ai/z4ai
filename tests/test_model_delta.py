@@ -36,8 +36,14 @@ def test_finetune_roundtrip_and_beats_full():
     # "fine-tune": nudge a few tensors, leave the (large) embedding untouched.
     ft = dict(tensors)
     rng = np.random.default_rng(7)
-    ft["layer.0.w"] = ft["layer.0.w"] + rng.standard_normal(ft["layer.0.w"].shape).astype(np.float32) * 0.001
-    ft["layer.1.w"] = ft["layer.1.w"] + rng.standard_normal(ft["layer.1.w"].shape).astype(np.float32) * 0.001
+    ft["layer.0.w"] = (
+        ft["layer.0.w"]
+        + rng.standard_normal(ft["layer.0.w"].shape).astype(np.float32) * 0.001
+    )
+    ft["layer.1.w"] = (
+        ft["layer.1.w"]
+        + rng.standard_normal(ft["layer.1.w"].shape).astype(np.float32) * 0.001
+    )
     target = _build_safetensors(ft)
 
     blob = model_delta.compress(target, base)
@@ -52,7 +58,9 @@ def test_added_removed_reordered_tensors_align_by_name():
     tensors = _base_model()
     # Drop one tensor, add a new one, and rely on name (not offset) alignment.
     del tensors["layer.0.b"]
-    tensors["layer.2.new"] = (np.random.default_rng(3).standard_normal((64, 64)).astype(np.float32) * 0.02)
+    tensors["layer.2.new"] = (
+        np.random.default_rng(3).standard_normal((64, 64)).astype(np.float32) * 0.02
+    )
     # Reorder dict insertion to shift byte offsets vs base.
     target = _build_safetensors({k: tensors[k] for k in reversed(list(tensors))})
 

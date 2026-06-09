@@ -39,6 +39,10 @@ hf = ["torch", "safetensors>=0.4"]
 test = ["pytest>=7.0", "brotli"]
 benchmark = ["zipnn", "brotli"]
 maxratio = ["brotli"]
+# `lint` pins the formatter used in CI (see .github/workflows/ci.yml). Install
+# with `pip install -e ".[lint]"` and run `black .` to autoformat, or
+# `black --check .` to verify formatting the way CI does.
+lint = ["black>=24.0"]
 
 [project.urls]
 Homepage = "https://github.com/z4ai/z4ai"
@@ -58,6 +62,13 @@ packages = ["z4ai"]
 # are relative to the `z4ai` package directory.
 [tool.setuptools.package-data]
 z4ai = ["_native/*.c", "_native/*.h", "_native_shuffle.c", "_native_codec.c"]
+
+[tool.black]
+line-length = 88
+target-version = ["py39", "py310", "py311", "py312"]
+# `research/` is untracked scratch work and is not part of the shipped package;
+# keep it out of formatting so local `black .` matches the CI checkout.
+extend-exclude = "/research/"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

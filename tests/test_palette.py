@@ -42,7 +42,9 @@ def test_palette_roundtrip(width, n, k):
     if n == 0:
         raw = b""
     else:
-        vals = rng.choice(np.arange(1, hi, dtype=dt), size=min(k, hi - 1), replace=False)
+        vals = rng.choice(
+            np.arange(1, hi, dtype=dt), size=min(k, hi - 1), replace=False
+        )
         raw = rng.choice(vals, size=n).astype(dt).tobytes()
     blob = palette.compress(raw, width)
     assert palette.peek_is_palette(blob)
@@ -103,7 +105,7 @@ def test_codec_picks_palette_on_quantized(dtype, levels):
         raw = q.astype(np.float32).tobytes()
     blob = z4ai.compress(raw, dtype=dtype)
     assert bytes(z4ai.decompress(blob)) == raw  # lossless
-    assert palette.peek_is_palette(blob)        # palette won the best-of
+    assert palette.peek_is_palette(blob)  # palette won the best-of
     assert len(blob) < len(raw)
 
 

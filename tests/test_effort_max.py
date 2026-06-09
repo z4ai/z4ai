@@ -10,6 +10,7 @@ transparently accept them.  The backend slices large streams into independent
 (so the block framing, parallel encode, and parallel decode are all covered) and
 assert byte-exact round-trips, including the ratio win that is the whole point.
 """
+
 import numpy as np
 import pytest
 
@@ -31,7 +32,9 @@ def _structured_bf16(n=3_000_000, seed=7):
 
 @pytest.mark.parametrize("dtype", DTYPES)
 def test_effort_max_bytes_roundtrip(dtype):
-    data = f32_to_bf16_bytes(np.random.default_rng(1).standard_normal(500_000).astype(np.float32))
+    data = f32_to_bf16_bytes(
+        np.random.default_rng(1).standard_normal(500_000).astype(np.float32)
+    )
     blob = z4ai.compress(data, dtype=dtype, effort="max")
     # best-of(AUTO, default) -> a ZARA frame when brotli wins, else a Z4AI frame.
     assert bytes(blob[:4]) in (b"ZARA", b"Z4AI", b"ZSP1")
@@ -40,9 +43,13 @@ def test_effort_max_bytes_roundtrip(dtype):
 
 @pytest.mark.parametrize("n_extra", [0, 1, 2, 3])
 def test_effort_max_non_multiple_lengths(n_extra):
-    base = f32_to_bf16_bytes(np.random.default_rng(2).standard_normal(40_000).astype(np.float32))
+    base = f32_to_bf16_bytes(
+        np.random.default_rng(2).standard_normal(40_000).astype(np.float32)
+    )
     data = base + bytes(range(n_extra))
-    assert bytes(z4ai.decompress(z4ai.compress(data, dtype="bf16", effort="max"))) == data
+    assert (
+        bytes(z4ai.decompress(z4ai.compress(data, dtype="bf16", effort="max"))) == data
+    )
 
 
 def test_effort_max_empty_and_tiny():
@@ -58,7 +65,7 @@ def test_effort_max_multiblock_roundtrip():
 
 
 def test_effort_max_ndarray_roundtrip():
-    arr = (np.random.default_rng(3).standard_normal((400, 500)).astype(np.float32))
+    arr = np.random.default_rng(3).standard_normal((400, 500)).astype(np.float32)
     blob = z4ai.compress_ndarray(arr, effort="max")
     assert bytes(blob[:4]) in (b"ZARA", b"Z4AI", b"ZSP1")
     out = z4ai.decompress_ndarray(blob)

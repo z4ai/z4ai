@@ -71,7 +71,11 @@ def test_max_ratio_entropy_coder_helps(z4ai, iid_bf16):
 
     default_blob = z4ai.compress(iid_bf16, dtype="bf16")
     methods = [p.method for p in zfmt.deserialize(default_blob).planes]
-    rans_methods = {backend.METHOD_RANS, getattr(backend, "METHOD_RANS_ADAPT", -1), getattr(backend, "METHOD_RANS_O1", -1)}
+    rans_methods = {
+        backend.METHOD_RANS,
+        getattr(backend, "METHOD_RANS_ADAPT", -1),
+        getattr(backend, "METHOD_RANS_O1", -1),
+    }
     assert rans_methods & set(methods), (
         f"default bf16 frame uses no rANS method (plane methods={methods}); the "
         f"entropy coder is disconnected from the default path."

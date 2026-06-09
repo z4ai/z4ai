@@ -100,7 +100,8 @@ _DTYPE_WIDTH = {
 # fp16/fp32 fall through to the byte-plane path, which is both correct and
 # higher-ratio for them.  See benchmarks/TUNING.md.
 _BITFIELD_DTYPES = {
-    "bf16", "bfloat16",
+    "bf16",
+    "bfloat16",
 }
 
 
@@ -214,9 +215,7 @@ def _compress_planes(
 def _plane_entries(
     compressed: List[backend.CompressedPlane],
 ) -> List[format.PlaneEntry]:
-    return [
-        format.PlaneEntry(cp.method, cp.orig_len, cp.data) for cp in compressed
-    ]
+    return [format.PlaneEntry(cp.method, cp.orig_len, cp.data) for cp in compressed]
 
 
 # Process-wide pool for the auto-mode best-of *side* work - the opaque LDM probe,
@@ -233,7 +232,8 @@ def _bestof_pool() -> ThreadPoolExecutor:
     global _BESTOF_POOL
     if _BESTOF_POOL is None:
         _BESTOF_POOL = ThreadPoolExecutor(
-            max_workers=max(3, (os.cpu_count() or 1) // 2), thread_name_prefix="z4ai-bestof"
+            max_workers=max(3, (os.cpu_count() or 1) // 2),
+            thread_name_prefix="z4ai-bestof",
         )
     return _BESTOF_POOL
 
@@ -249,8 +249,7 @@ def _bestof_pool() -> ThreadPoolExecutor:
 # bf16.  The one plane that matters is parallelized inside the backend instead.
 def _decompress_planes(container: format.Container) -> List[bytes]:
     return [
-        backend.decompress_plane(p.method, p.data, p.orig_len)
-        for p in container.planes
+        backend.decompress_plane(p.method, p.data, p.orig_len) for p in container.planes
     ]
 
 
@@ -303,13 +302,25 @@ def _normalise_input(data) -> Tuple[bytes, bool, str, Tuple[int, ...], Optional[
     if isinstance(data, np.ndarray):
         arr = np.ascontiguousarray(data)
         raw = arr.tobytes()
-        return raw, True, arr.dtype.str, tuple(int(d) for d in arr.shape), _np_to_code(arr.dtype)
+        return (
+            raw,
+            True,
+            arr.dtype.str,
+            tuple(int(d) for d in arr.shape),
+            _np_to_code(arr.dtype),
+        )
     if isinstance(data, (bytes, bytearray, memoryview)):
         return bytes(data), False, "", (), None
     # Best-effort: anything else exposing the buffer protocol (e.g. a torch
     # tensor's .numpy()).  Fall back to numpy coercion.
     arr = np.ascontiguousarray(np.asarray(data))
-    return arr.tobytes(), True, arr.dtype.str, tuple(int(d) for d in arr.shape), _np_to_code(arr.dtype)
+    return (
+        arr.tobytes(),
+        True,
+        arr.dtype.str,
+        tuple(int(d) for d in arr.shape),
+        _np_to_code(arr.dtype),
+    )
 
 
 def _np_to_code(dt: np.dtype) -> Optional[str]:
@@ -415,8 +426,17 @@ def compress(
         ldm_future = _bestof_pool().submit(_ldm_probe_size, raw)
         if bp_width and bp_width > 1 and transform != format.TRANSFORM_BYTEPLANE:
             byteplane_future = _bestof_pool().submit(
-                _byteplane_frame, raw, bp_width, resolved_level, escalate_level,
-                threads, plane_workers, is_numpy, np_dtype, shape, rans,
+                _byteplane_frame,
+                raw,
+                bp_width,
+                resolved_level,
+                escalate_level,
+                threads,
+                plane_workers,
+                is_numpy,
+                np_dtype,
+                shape,
+                rans,
             )
 
     compressed = _compress_planes(
@@ -444,8 +464,10 @@ def compress(
     # win over ZipNN's fixed-size-chunk compression, and (c) doubles as the
     # never-expand safety net for inputs the float path mis-fits.  Skip the
     # extra pass when the transform was already an opaque Zstd pass.
-    needs_alternatives = raw and transform != format.TRANSFORM_OPAQUE and (
-        auto or len(frame) >= 0.98 * len(raw)
+    needs_alternatives = (
+        raw
+        and transform != format.TRANSFORM_OPAQUE
+        and (auto or len(frame) >= 0.98 * len(raw))
     )
     # Alternative-candidate policy.  Two alternatives can beat the primary frame,
     # and they compress *different byte orders*:
@@ -484,8 +506,7 @@ def compress(
             build_opaque = True
         else:
             ldm_size = (
-                ldm_future.result() if ldm_future is not None
-                else _ldm_probe_size(raw)
+                ldm_future.result() if ldm_future is not None else _ldm_probe_size(raw)
             )
             build_opaque = ldm_size < len(frame)
 
@@ -504,7 +525,8 @@ def compress(
             _bestof_pool().submit(
                 _opaque_frame, raw, resolved_level, is_numpy, np_dtype, shape
             )
-            if build_opaque else None
+            if build_opaque
+            else None
         )
 
         # Build the byte-plane candidate directly (no probe - see policy note),
@@ -514,10 +536,19 @@ def compress(
         byteplane_cand = None
         if has_byteplane_alt:
             byteplane_cand = (
-                byteplane_future.result() if byteplane_future is not None
+                byteplane_future.result()
+                if byteplane_future is not None
                 else _byteplane_frame(
-                    raw, bp_width, resolved_level, escalate_level, threads,
-                    plane_workers, is_numpy, np_dtype, shape, rans,
+                    raw,
+                    bp_width,
+                    resolved_level,
+                    escalate_level,
+                    threads,
+                    plane_workers,
+                    is_numpy,
+                    np_dtype,
+                    shape,
+                    rans,
                 )
             )
 
@@ -555,8 +586,12 @@ def compress(
         sw = _itemsize_for(dtype, width)
         if sw and sparse.supported_width(sw) and sparse.should_use(raw, sw):
             sparse_frame = sparse.compress(
-                raw, sw, level=resolved_level,
-                is_numpy=is_numpy, np_dtype=np_dtype, shape=shape,
+                raw,
+                sw,
+                level=resolved_level,
+                is_numpy=is_numpy,
+                np_dtype=np_dtype,
+                shape=shape,
             )
             if len(sparse_frame) < len(frame):
                 frame = sparse_frame
@@ -576,8 +611,12 @@ def compress(
         pw = _itemsize_for(dtype, width)
         if pw and palette.supported_width(pw) and palette.should_use(raw, pw):
             palette_frame = palette.compress(
-                raw, pw, level=resolved_level,
-                is_numpy=is_numpy, np_dtype=np_dtype, shape=shape,
+                raw,
+                pw,
+                level=resolved_level,
+                is_numpy=is_numpy,
+                np_dtype=np_dtype,
+                shape=shape,
             )
             if len(palette_frame) < len(frame):
                 frame = palette_frame
@@ -863,9 +902,7 @@ def decompress(blob: bytes, *, out: Optional[bytearray] = None) -> bytes:
     if out is not None:
         n = len(result)
         if len(out) < n:
-            raise ValueError(
-                f"out buffer too small: need {n}, have {len(out)}"
-            )
+            raise ValueError(f"out buffer too small: need {n}, have {len(out)}")
         out[:n] = result
         return out
     return result

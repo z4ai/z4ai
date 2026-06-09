@@ -18,6 +18,7 @@ Summary of the expected story (fp32, dense i.i.d. excluded from the "win"):
   * structured    -> z4ai wins by 30-40x (whole-tensor window vs 256 KB chunks).
   * sparse        -> tie (~1.85x).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -86,11 +87,15 @@ def main(argv=None):
     n = max(width, int(args.mb * 1e6) // width)
     cfn, dfn, zok = make_zipnn_codec(args.dtype)
 
-    print(f"z4ai vs ZipNN by weight scenario - {args.dtype}, {args.mb:g} MB, "
-          f"level={args.level}, threads={args.threads}")
+    print(
+        f"z4ai vs ZipNN by weight scenario - {args.dtype}, {args.mb:g} MB, "
+        f"level={args.level}, threads={args.threads}"
+    )
     print(f"ZipNN lossless path available: {zok}\n")
-    hdr = (f"{'scenario':<12}{'codec':<14}{'ratio':>10}{'comp MB/s':>11}"
-           f"{'decomp MB/s':>12}{'lossless':>10}")
+    hdr = (
+        f"{'scenario':<12}{'codec':<14}{'ratio':>10}{'comp MB/s':>11}"
+        f"{'decomp MB/s':>12}{'lossless':>10}"
+    )
 
     wins = []
     for sc in args.scenarios:
@@ -102,27 +107,36 @@ def main(argv=None):
 
         z_ratio = None
         if zok:
-            (zc, z_cs) = _best(lambda: cfn(data), args.repeats)
-            (zd, z_ds) = _best(lambda c=zc: dfn(c), args.repeats)
+            zc, z_cs = _best(lambda: cfn(data), args.repeats)
+            zd, z_ds = _best(lambda c=zc: dfn(c), args.repeats)
             z_blob = zc[0] if isinstance(zc, tuple) else zc
-            z_bytes = len(z_blob if isinstance(z_blob, (bytes, bytearray)) else bytes(z_blob))
+            z_bytes = len(
+                z_blob if isinstance(z_blob, (bytes, bytearray)) else bytes(z_blob)
+            )
             z_ratio = orig / z_bytes
-            print(f"{'':<12}{'zipnn':<14}{z_ratio:>10.3f}{_mbps(orig, z_cs):>11.0f}"
-                  f"{_mbps(orig, z_ds):>12.0f}{('yes' if zd == data else 'NO!'):>10}")
+            print(
+                f"{'':<12}{'zipnn':<14}{z_ratio:>10.3f}{_mbps(orig, z_cs):>11.0f}"
+                f"{_mbps(orig, z_ds):>12.0f}{('yes' if zd == data else 'NO!'):>10}"
+            )
 
         comp, decomp = z4ai_bytegroup(data, width, args.level, args.threads)
-        (parts, c_s) = _best(comp, args.repeats)
-        (out, d_s) = _best(lambda p=parts: decomp(p), args.repeats)
+        parts, c_s = _best(comp, args.repeats)
+        out, d_s = _best(lambda p=parts: decomp(p), args.repeats)
         z_b = sum(len(x) for x in parts)
         ratio = orig / z_b
         ll = out == data
-        print(f"{'':<12}{'z4ai':<14}{ratio:>10.3f}{_mbps(orig, c_s):>11.0f}"
-              f"{_mbps(orig, d_s):>12.0f}{('yes' if ll else 'NO!'):>10}")
+        print(
+            f"{'':<12}{'z4ai':<14}{ratio:>10.3f}{_mbps(orig, c_s):>11.0f}"
+            f"{_mbps(orig, d_s):>12.0f}{('yes' if ll else 'NO!'):>10}"
+        )
 
         if z_ratio:
             factor = ratio / z_ratio
-            verdict = (f"WIN {factor:.1f}x" if factor > 1.05
-                       else ("tie" if factor > 0.95 else f"lose {1/factor:.2f}x"))
+            verdict = (
+                f"WIN {factor:.1f}x"
+                if factor > 1.05
+                else ("tie" if factor > 0.95 else f"lose {1/factor:.2f}x")
+            )
             print(f"  -> z4ai/zipnn ratio = {factor:.2f}  [{verdict}]")
             wins.append((sc, factor))
         print()

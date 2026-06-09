@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Tests for the synthetic data generator (runnable without the core codec)."""
+
 import numpy as np
 
 from _data import bytes_per_element, f32_to_bf16_bytes, make_weights
@@ -14,7 +15,9 @@ def test_sizes():
 
 
 def test_deterministic():
-    assert make_weights(5000, dtype="bf16", seed=42) == make_weights(5000, dtype="bf16", seed=42)
+    assert make_weights(5000, dtype="bf16", seed=42) == make_weights(
+        5000, dtype="bf16", seed=42
+    )
 
 
 def test_bf16_truncation_matches_high_bits():

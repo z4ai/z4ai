@@ -13,6 +13,7 @@ Two extensions:
 * ``_native_codec``   - fused multithreaded chunked codec linking **libzstd**
   (the throughput path; ``z4ai.chunked`` falls back to pure Python without it).
 """
+
 import os
 import platform
 import shutil
@@ -46,15 +47,20 @@ def _zstd_flags():
             libs = subprocess.check_output(
                 ["pkg-config", "--libs", "libzstd"], text=True
             ).split()
-            return ([f[2:] for f in cflags if f.startswith("-I")],
-                    [f[2:] for f in libs if f.startswith("-L")],
-                    [f[2:] for f in libs if f.startswith("-l")] or ["zstd"])
+            return (
+                [f[2:] for f in cflags if f.startswith("-I")],
+                [f[2:] for f in libs if f.startswith("-L")],
+                [f[2:] for f in libs if f.startswith("-l")] or ["zstd"],
+            )
         except Exception:  # noqa: BLE001
             pass
     for prefix in ("/opt/homebrew/opt/zstd", "/opt/homebrew", "/usr/local"):
         if os.path.exists(os.path.join(prefix, "include", "zstd.h")):
-            return ([os.path.join(prefix, "include")],
-                    [os.path.join(prefix, "lib")], ["zstd"])
+            return (
+                [os.path.join(prefix, "include")],
+                [os.path.join(prefix, "lib")],
+                ["zstd"],
+            )
     if os.path.exists("/usr/include/zstd.h"):
         return ([], [], ["zstd"])
     return None

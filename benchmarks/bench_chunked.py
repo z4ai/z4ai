@@ -8,6 +8,7 @@ and verifying losslessness.
 
     python benchmarks/bench_chunked.py --mb 48 --dtypes bf16 fp16 fp32 fp64
 """
+
 from __future__ import annotations
 
 import argparse
@@ -74,28 +75,46 @@ def main(argv=None):
         dz = zstd.ZstdDecompressor()
         comp, cs = _best(lambda: cz.compress(data), args.repeats)
         out, ds = _best(lambda: dz.decompress(comp), args.repeats)
-        rows.append(("zstd-3", n / len(comp), _mbps(n, cs), _mbps(n, ds), bytes(out) == data))
+        rows.append(
+            ("zstd-3", n / len(comp), _mbps(n, cs), _mbps(n, ds), bytes(out) == data)
+        )
 
         comp, cs = _best(lambda: chunked.compress(data, dtype=dtype), args.repeats)
         out, ds = _best(lambda: chunked.decompress(comp), args.repeats)
-        rows.append(("z4ai-chunked", n / len(comp), _mbps(n, cs), _mbps(n, ds), bytes(out) == data))
+        rows.append(
+            (
+                "z4ai-chunked",
+                n / len(comp),
+                _mbps(n, cs),
+                _mbps(n, ds),
+                bytes(out) == data,
+            )
+        )
 
         pair = _zipnn_pair(dtype)
         if pair is not None:
             comp, cs = _best(lambda: pair[0](bytearray(data)), args.repeats)
             out, ds = _best(lambda: pair[1](comp), args.repeats)
-            rows.append(("zipnn", n / len(comp), _mbps(n, cs), _mbps(n, ds), bytes(out) == data))
+            rows.append(
+                ("zipnn", n / len(comp), _mbps(n, cs), _mbps(n, ds), bytes(out) == data)
+            )
         else:
-            print("  (zipnn unavailable for this dtype - z4ai covers it, zipnn does not)")
+            print(
+                "  (zipnn unavailable for this dtype - z4ai covers it, zipnn does not)"
+            )
 
         for name, ratio, cmb, dmb, ok in rows:
-            print(f"{name:<12}{ratio:>8.4f}{cmb:>12.0f}{dmb:>14.0f}{('yes' if ok else 'NO!'):>10}")
+            print(
+                f"{name:<12}{ratio:>8.4f}{cmb:>12.0f}{dmb:>14.0f}{('yes' if ok else 'NO!'):>10}"
+            )
 
         by = {r[0]: r for r in rows}
         if "zipnn" in by:
             z, k = by["z4ai-chunked"], by["zipnn"]
-            print(f"  z4ai vs zipnn:  ratio {(z[1]/k[1]-1)*100:+.2f}%, "
-                  f"comp {z[2]/k[2]:.2f}x, decomp {z[3]/k[3]:.2f}x")
+            print(
+                f"  z4ai vs zipnn:  ratio {(z[1]/k[1]-1)*100:+.2f}%, "
+                f"comp {z[2]/k[2]:.2f}x, decomp {z[3]/k[3]:.2f}x"
+            )
         z, b = by["z4ai-chunked"], by["zstd-3"]
         print(f"  z4ai vs zstd-3: ratio {(z[1]/b[1]-1)*100:+.2f}%\n")
 

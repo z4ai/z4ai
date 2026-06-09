@@ -65,6 +65,7 @@ Public API
 * :class:`ZstnReader` - lazy, random-access single-tensor reads from a file or
   buffer (``read_raw`` / ``read_numpy`` / ``names`` / ``header``).
 """
+
 from __future__ import annotations
 
 import json
@@ -132,6 +133,7 @@ def _dedup_fingerprint(raw: bytes):
     s = _DEDUP_SAMPLE
     return (n, bytes(mv[:s]), bytes(mv[n // 2 : n // 2 + s]), bytes(mv[n - s :]))
 
+
 # Container magic for a z4ai-compressed safetensors file (also the footer
 # sentinel, so the trailer can be validated from the end of the stream).
 MAGIC = b"ZSTN"
@@ -143,7 +145,8 @@ _FOOTER_LEN = struct.calcsize(_FOOTER_FMT)
 
 # Per-tensor record kinds.
 _K_FRAME = 0  # an inline z4ai-compressed frame of the tensor's bytes
-_K_REF = 1    # a back-reference: this tensor's bytes equal an earlier tensor's
+_K_REF = 1  # a back-reference: this tensor's bytes equal an earlier tensor's
+
 
 # safetensors dtype string -> (z4ai float dtype code or None, NumPy dtype str).
 # Float types take z4ai's model-weight path; the rest are compressed opaquely
@@ -187,12 +190,12 @@ class _IndexEntry:
     """A decoded index record; enough to locate one tensor's bytes."""
 
     name: str
-    begin: int        # destination span in the original data buffer
+    begin: int  # destination span in the original data buffer
     end: int
-    kind: int         # _K_FRAME or _K_REF
+    kind: int  # _K_FRAME or _K_REF
     frame_offset: int  # absolute file offset of the frame (FRAME only)
-    frame_len: int     # length of the frame (FRAME only)
-    ref_index: int     # emission index of the referenced FRAME (REF only)
+    frame_len: int  # length of the frame (FRAME only)
+    ref_index: int  # emission index of the referenced FRAME (REF only)
 
 
 def _parse_header(blob: bytes) -> Tuple[int, dict, List[_TensorEntry]]:
@@ -218,7 +221,9 @@ def _parse_header(blob: bytes) -> Tuple[int, dict, List[_TensorEntry]]:
         if not isinstance(meta, dict) or "data_offsets" not in meta:
             raise ValueError(f"tensor {name!r} missing data_offsets")
         begin, end = meta["data_offsets"]
-        entries.append(_TensorEntry(name, meta.get("dtype", "U8"), int(begin), int(end)))
+        entries.append(
+            _TensorEntry(name, meta.get("dtype", "U8"), int(begin), int(end))
+        )
     entries.sort(key=lambda e: e.begin)
     return header_len, header, entries
 
@@ -286,8 +291,10 @@ def compress_bytes(
     # but never hashes a whole tensor unless it is tiny.
     seen: Dict[object, List[Tuple[int, bytes]]] = {}
     plan: List[Tuple[int, int]] = []  # per entry: (_K_FRAME, idx) | (_K_REF, ref_index)
-    unique: List[Tuple[bytes, Optional[str]]] = []  # (raw, zcode) to compress, in idx order
-    unique_idx: List[int] = []                       # the emission index of each unique tensor
+    unique: List[Tuple[bytes, Optional[str]]] = (
+        []
+    )  # (raw, zcode) to compress, in idx order
+    unique_idx: List[int] = []  # the emission index of each unique tensor
     for idx, e in enumerate(entries):
         raw = data[e.begin : e.end]
         fp = _dedup_fingerprint(raw)
@@ -323,7 +330,9 @@ def compress_bytes(
     if threads == 0 and n_workers > 1:
         inner_threads = max(1, (os.cpu_count() or 1) // n_workers)
     frames = _map(
-        lambda rc: codec.compress(rc[0], dtype=rc[1], level=level, threads=inner_threads),
+        lambda rc: codec.compress(
+            rc[0], dtype=rc[1], level=level, threads=inner_threads
+        ),
         unique,
         n_workers,
     )
@@ -449,7 +458,9 @@ def _parse_index(buf: bytes) -> List[_IndexEntry]:
         if kind == _K_FRAME:
             frame_offset, frame_len = struct.unpack_from("<QQ", buf, off)
             off += 16
-            entries.append(_IndexEntry(name, begin, end, kind, frame_offset, frame_len, 0))
+            entries.append(
+                _IndexEntry(name, begin, end, kind, frame_offset, frame_len, 0)
+            )
         elif kind == _K_REF:
             (ref_index,) = struct.unpack_from("<I", buf, off)
             off += 4

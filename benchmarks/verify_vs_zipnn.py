@@ -13,6 +13,7 @@ reproduce them on your hardware/data:
 ZipNN supports bf16/fp16/fp32 only; fp64 (and integer dtypes) are a z4ai-only
 capability, shown for completeness with no ZipNN column.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,7 +42,9 @@ def make(dtype: str, scenario: str, nbytes: int, seed: int = 0) -> bytes:
     rng = np.random.default_rng(seed)
     n = nbytes // _BYTES[dtype]
     if dtype == "bf16":
-        base = (rng.standard_normal(n).astype(np.float32).view(np.uint32) >> 16).astype(np.uint16)
+        base = (rng.standard_normal(n).astype(np.float32).view(np.uint32) >> 16).astype(
+            np.uint16
+        )
     elif dtype == "fp16":
         base = rng.standard_normal(n).astype(np.float16).view(np.uint16)
     elif dtype == "fp32":
@@ -49,10 +52,10 @@ def make(dtype: str, scenario: str, nbytes: int, seed: int = 0) -> bytes:
     else:
         base = rng.standard_normal(n).astype(np.float64).view(np.uint64)
     arr = base.copy()
-    if scenario == "structured":          # tied/duplicated layers: a tile repeated
+    if scenario == "structured":  # tied/duplicated layers: a tile repeated
         k = max(1, n // 64)
         arr = np.tile(base[:k], 64)[:n].copy()
-    elif scenario == "sparse":            # pruned model: 50% exact zeros
+    elif scenario == "sparse":  # pruned model: 50% exact zeros
         arr[rng.random(n) < 0.5] = 0
     return arr.tobytes()
 
@@ -60,8 +63,11 @@ def make(dtype: str, scenario: str, nbytes: int, seed: int = 0) -> bytes:
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--mb", type=float, default=16.0, help="bytes per case (MB)")
-    p.add_argument("--max-ratio", action="store_true",
-                   help="also compress at level 19 (enables the rANS entropy path)")
+    p.add_argument(
+        "--max-ratio",
+        action="store_true",
+        help="also compress at level 19 (enables the rANS entropy path)",
+    )
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args(argv)
 
@@ -69,9 +75,11 @@ def main(argv=None):
     scenarios = ["iid", "structured", "sparse"]
     nbytes = int(args.mb * 1e6)
 
-    print(f"z4ai vs ZipNN ratio matrix - {args.mb:g} MB/case, "
-          f"max_ratio={'on' if args.max_ratio else 'off'}, "
-          f"zipnn={'yes' if _HAVE_ZIPNN else 'not installed'}")
+    print(
+        f"z4ai vs ZipNN ratio matrix - {args.mb:g} MB/case, "
+        f"max_ratio={'on' if args.max_ratio else 'off'}, "
+        f"zipnn={'yes' if _HAVE_ZIPNN else 'not installed'}"
+    )
     hdr = f"{'dtype':<6}{'scenario':<12}{'z4ai':>9}{'zipnn':>9}{'lossless':>10}{'verdict':>9}"
     print(hdr)
     print("-" * len(hdr))
@@ -115,9 +123,11 @@ def main(argv=None):
 
     if comparable:
         losses = comparable - wins - ties
-        print(f"\nz4ai vs ZipNN on ratio: {wins} WIN / {ties} tie / {losses} lose "
-              f"of {comparable} comparable cases (tie = within +/-0.5%, the lossless "
-              f"entropy floor). fp64 + integer dtypes are z4ai-only (ZipNN unsupported).")
+        print(
+            f"\nz4ai vs ZipNN on ratio: {wins} WIN / {ties} tie / {losses} lose "
+            f"of {comparable} comparable cases (tie = within +/-0.5%, the lossless "
+            f"entropy floor). fp64 + integer dtypes are z4ai-only (ZipNN unsupported)."
+        )
 
 
 if __name__ == "__main__":

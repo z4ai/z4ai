@@ -47,12 +47,12 @@ MAGIC = b"ZRT1"
 _VERSION = 2
 
 # Transform tags.
-_T_OPAQUE = 0   # one stream over the whole buffer (no transpose)
-_T_PLANES = 1   # byte-plane transpose, one stream per plane
+_T_OPAQUE = 0  # one stream over the whole buffer (no transpose)
+_T_PLANES = 1  # byte-plane transpose, one stream per plane
 
 # Stream method tags.
-_M_STORE = 0    # stored verbatim
-_M_ZSTD = 1     # Zstd compressed
+_M_STORE = 0  # stored verbatim
+_M_ZSTD = 1  # Zstd compressed
 
 DEFAULT_LEVEL = 3
 
@@ -63,11 +63,11 @@ DEFAULT_LEVEL = 3
 # sample does exactly that on a plane whose head is high-entropy but which has
 # long-range repeats deeper in (structured/duplicated weights - our headline
 # case), so we sample STRIDED windows spread across the whole plane instead.
-_PROBE_LEVEL = 1            # cheap level used only to decide store-vs-compress
+_PROBE_LEVEL = 1  # cheap level used only to decide store-vs-compress
 _PROBE_INCOMPRESSIBLE = 0.97
-_SMALL = 1 << 18            # streams <= this are compressed without probing
-_KEEP_RATIO = 0.99          # only keep a compressed stream if it actually saves
-_PROBE_WINDOW_LOG = 27      # ceiling; lets the probe see long-range repeats
+_SMALL = 1 << 18  # streams <= this are compressed without probing
+_KEEP_RATIO = 0.99  # only keep a compressed stream if it actually saves
+_PROBE_WINDOW_LOG = 27  # ceiling; lets the probe see long-range repeats
 
 
 def _probe_window_log(n: int) -> int:
@@ -242,7 +242,5 @@ def decompress(blob: bytes, *, workers: Optional[int] = None) -> bytes:
         raise ValueError(f"turbo: unknown transform {transform}")
 
     if len(result) != orig_len:
-        raise ValueError(
-            f"turbo: decoded length {len(result)} != expected {orig_len}"
-        )
+        raise ValueError(f"turbo: decoded length {len(result)} != expected {orig_len}")
     return result

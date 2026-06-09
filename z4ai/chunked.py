@@ -75,7 +75,7 @@ except Exception:  # noqa: BLE001 - optional accelerator; never a hard dependenc
 
 MAGIC = b"Z4AIMF01"
 DEFAULT_CHUNK_SIZE = 2 << 20  # 2 MiB - small enough to spread across cores
-DEFAULT_LEVEL = 1             # see FINDINGS-speed.md: best ratio AND fastest
+DEFAULT_LEVEL = 1  # see FINDINGS-speed.md: best ratio AND fastest
 
 _METHOD_STORE = 0
 _METHOD_ZSTD = 1
@@ -89,11 +89,27 @@ _POOL_LOCK = threading.Lock()
 
 def _width_for_dtype(dtype: Optional[str]) -> int:
     return {
-        None: 1, "uint8": 1, "u8": 1, "int8": 1, "i8": 1,
-        "fp8_e4m3": 1, "fp8_e5m2": 1,
-        "fp16": 2, "bf16": 2, "bfloat16": 2, "float16": 2, "int16": 2, "uint16": 2,
-        "fp32": 4, "float32": 4, "int32": 4, "uint32": 4,
-        "fp64": 8, "float64": 8, "int64": 8, "uint64": 8,
+        None: 1,
+        "uint8": 1,
+        "u8": 1,
+        "int8": 1,
+        "i8": 1,
+        "fp8_e4m3": 1,
+        "fp8_e5m2": 1,
+        "fp16": 2,
+        "bf16": 2,
+        "bfloat16": 2,
+        "float16": 2,
+        "int16": 2,
+        "uint16": 2,
+        "fp32": 4,
+        "float32": 4,
+        "int32": 4,
+        "uint32": 4,
+        "fp64": 8,
+        "float64": 8,
+        "int64": 8,
+        "uint64": 8,
     }.get(dtype.lower() if isinstance(dtype, str) else dtype, 1)
 
 

@@ -18,6 +18,7 @@ All four are verified byte-exact. Run::
 The printed verdict tells the core-codec owner which transform to ship as the
 default high-ratio mode.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -157,12 +158,17 @@ def run_dtype(dtype: str, mb: float, level: int, seed: int, repeats: int):
         lossless = bytes(out) == data
         ratio = orig / comp_bytes if comp_bytes else float("inf")
         results[name] = dict(
-            ratio=ratio, comp=_mbps(orig, c_sec), decomp=_mbps(orig, d_sec),
-            lossless=lossless, bytes=comp_bytes,
+            ratio=ratio,
+            comp=_mbps(orig, c_sec),
+            decomp=_mbps(orig, d_sec),
+            lossless=lossless,
+            bytes=comp_bytes,
         )
         flag = "yes" if lossless else "NO!"
-        print(f"{name:<14}{ratio:>8.3f}{results[name]['comp']:>12.0f}"
-              f"{results[name]['decomp']:>13.0f}{flag:>10}")
+        print(
+            f"{name:<14}{ratio:>8.3f}{results[name]['comp']:>12.0f}"
+            f"{results[name]['decomp']:>13.0f}{flag:>10}"
+        )
 
     _verdict(results)
     print()
@@ -177,21 +183,27 @@ def _verdict(r):
         if base in r:
             b = r[base]
             dr = (bf["ratio"] / b["ratio"] - 1) * 100
-            print(f"  bit-field vs {base:<10}: ratio {dr:+5.1f}%  "
-                  f"(smaller output by {(1 - bf['bytes']/b['bytes'])*100:+.1f}%)")
+            print(
+                f"  bit-field vs {base:<10}: ratio {dr:+5.1f}%  "
+                f"(smaller output by {(1 - bf['bytes']/b['bytes'])*100:+.1f}%)"
+            )
 
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--mb", type=float, default=32.0)
     p.add_argument("--dtypes", nargs="+", default=["bf16", "fp16", "fp32"])
-    p.add_argument("--level", type=int, default=19, help="zstd level for the prize streams")
+    p.add_argument(
+        "--level", type=int, default=19, help="zstd level for the prize streams"
+    )
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--repeats", type=int, default=3)
     args = p.parse_args(argv)
 
-    print(f"z4ai transform ablation - {args.mb:g} MB/dtype, level={args.level}, "
-          f"repeats={args.repeats}\n")
+    print(
+        f"z4ai transform ablation - {args.mb:g} MB/dtype, level={args.level}, "
+        f"repeats={args.repeats}\n"
+    )
     for dtype in args.dtypes:
         run_dtype(dtype, args.mb, args.level, args.seed, args.repeats)
 

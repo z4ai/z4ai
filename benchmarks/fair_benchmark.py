@@ -24,6 +24,7 @@ never silently counted.
 
 Run:  ``.venv/bin/python benchmarks/fair_benchmark.py``
 """
+
 from __future__ import annotations
 
 import argparse
@@ -159,16 +160,21 @@ def main(argv=None) -> int:
     ap.add_argument("--mb", type=float, default=8.0, help="MB per dataset (bf16)")
     ap.add_argument("--repeats", type=int, default=3)
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--level", type=int, default=None,
-                    help="z4ai zstd level (None=package default)")
+    ap.add_argument(
+        "--level", type=int, default=None, help="z4ai zstd level (None=package default)"
+    )
     ap.add_argument("--datasets", nargs="+", default=list(DATASETS))
     args = ap.parse_args(argv)
 
     n = max(1, int(args.mb * 1e6) // 2)  # bf16 = 2 bytes/elem
     have_zipnn = zipnn is not None and torch is not None
-    print(f"Fair benchmark - {args.mb:g} MB/dataset, bf16, level={args.level or 'default'}, "
-          f"repeats={args.repeats}")
-    print(f"z4ai={z4ai.__version__}  zipnn={'torch-path' if have_zipnn else 'UNAVAILABLE'}\n")
+    print(
+        f"Fair benchmark - {args.mb:g} MB/dataset, bf16, level={args.level or 'default'}, "
+        f"repeats={args.repeats}"
+    )
+    print(
+        f"z4ai={z4ai.__version__}  zipnn={'torch-path' if have_zipnn else 'UNAVAILABLE'}\n"
+    )
 
     wins = ties = losses = 0
     for ds in args.datasets:
@@ -184,8 +190,10 @@ def main(argv=None) -> int:
         print("-" * len(hdr))
         for r in rows:
             ratio = "n/a" if r["ratio"] != r["ratio"] else f"{r['ratio']:.3f}"
-            print(f"{r['name']:<10}{ratio:>10}{r['comp_mbps']:>12.0f}"
-                  f"{r['decomp_mbps']:>14.0f}{('yes' if r['lossless'] else 'NO!'):>10}")
+            print(
+                f"{r['name']:<10}{ratio:>10}{r['comp_mbps']:>12.0f}"
+                f"{r['decomp_mbps']:>14.0f}{('yes' if r['lossless'] else 'NO!'):>10}"
+            )
 
         by = {r["name"]: r for r in rows}
         if "zipnn" in by and by["z4ai"]["lossless"] and by["zipnn"]["lossless"]:
@@ -195,9 +203,11 @@ def main(argv=None) -> int:
             wins += verdict == "WIN "
             ties += verdict == "tie "
             losses += verdict == "lose"
-            print(f"  -> ratio {delta:+.1f}% vs zipnn  [{verdict.strip()}]   "
-                  f"comp {by['z4ai']['comp_mbps']/by['zipnn']['comp_mbps']:.2f}x  "
-                  f"decomp {by['z4ai']['decomp_mbps']/by['zipnn']['decomp_mbps']:.2f}x")
+            print(
+                f"  -> ratio {delta:+.1f}% vs zipnn  [{verdict.strip()}]   "
+                f"comp {by['z4ai']['comp_mbps']/by['zipnn']['comp_mbps']:.2f}x  "
+                f"decomp {by['z4ai']['decomp_mbps']/by['zipnn']['decomp_mbps']:.2f}x"
+            )
         print()
 
     if wins or ties or losses:

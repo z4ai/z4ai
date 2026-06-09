@@ -7,6 +7,7 @@ these tests cross-check it against the pure-NumPy transpose for every width and
 tail length. If it is not built, they verify the fallback path is self
 consistent. Either way, the codec's own round-trip is exercised.
 """
+
 import os
 
 import pytest
@@ -38,7 +39,7 @@ def test_accel_matches_numpy_reference(width, tail):
     assert planes == _numpy_split(body, width)
 
     # round-trip through the accel join, including the unaligned tail
-    rebuilt = _accel.join_planes(planes, width, buf[n * width:])
+    rebuilt = _accel.join_planes(planes, width, buf[n * width :])
     assert rebuilt == buf
 
 
@@ -51,7 +52,7 @@ def test_transforms_delegates_consistently(width):
     buf = os.urandom(1024 * width + 3)
     n = len(buf) // width
     planes = transforms.split_planes(buf, width)
-    out = transforms.join_planes(planes, width, buf[n * width:])
+    out = transforms.join_planes(planes, width, buf[n * width :])
     assert out == buf
 
 
@@ -68,7 +69,9 @@ def test_codec_roundtrip_uses_native():
     """End-to-end codec round-trip while the native path is live."""
     import numpy as np
 
-    data = (np.random.default_rng(0).integers(0, 256, 100_000, dtype=np.uint8)).tobytes()
+    data = (
+        np.random.default_rng(0).integers(0, 256, 100_000, dtype=np.uint8)
+    ).tobytes()
     for dtype in ("uint16", "uint32", "fp32"):
         blob = z4ai.compress(data, dtype=dtype)
         assert bytes(z4ai.decompress(blob)) == data

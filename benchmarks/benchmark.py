@@ -16,6 +16,7 @@ Usage:
 It degrades gracefully: if `z4ai` is not importable yet (core still in progress),
 it still runs the zstd and ZipNN reference numbers so we know the target to beat.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,8 +27,8 @@ from pathlib import Path
 import numpy as np
 
 _HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(_HERE))           # for `_data`
-sys.path.insert(0, str(_HERE.parent))    # repo root, so `import z4ai` works
+sys.path.insert(0, str(_HERE))  # for `_data`
+sys.path.insert(0, str(_HERE.parent))  # repo root, so `import z4ai` works
 from _data import bytes_per_element, make_scenario, make_weights  # noqa: E402
 
 import zstandard as zstd  # required dependency
@@ -49,6 +50,7 @@ def _mbps(nbytes: int, seconds: float) -> float:
 
 
 # --- codec adapters: (compress_fn, decompress_fn) ------------------------------
+
 
 def zstd_codec(level: int, threads: int):
     threads = -1 if threads == 0 else threads  # zstandard: -1 = all cores
@@ -121,25 +123,33 @@ def main(argv=None):
     p.add_argument("--threads", type=int, default=0, help="0=all cores")
     p.add_argument("--repeats", type=int, default=3)
     p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--scenario", default="iid", choices=["iid", "structured", "sparse"],
-                   help="weight structure: iid (tie), structured (z4ai wins), sparse")
+    p.add_argument(
+        "--scenario",
+        default="iid",
+        choices=["iid", "structured", "sparse"],
+        help="weight structure: iid (tie), structured (z4ai wins), sparse",
+    )
     args = p.parse_args(argv)
 
     have_z4ai = _try_import("z4ai")
     have_zipnn = _try_import("zipnn")
     zstd_level = args.level if args.level is not None else 3
 
-    print(f"z4ai benchmark - {args.mb:g} MB/dtype, scenario={args.scenario}, "
-          f"level={args.level or 'default'}, threads={args.threads}, repeats={args.repeats}")
+    print(
+        f"z4ai benchmark - {args.mb:g} MB/dtype, scenario={args.scenario}, "
+        f"level={args.level or 'default'}, threads={args.threads}, repeats={args.repeats}"
+    )
     native = False
     if have_z4ai:
         try:
             from z4ai._accel import HAVE_NATIVE as native  # noqa: N811
         except Exception:  # noqa: BLE001
             native = False
-    print(f"z4ai={'yes' if have_z4ai else 'MISSING (core in progress)'}  "
-          f"native_accel={'yes' if native else 'no (numpy fallback)'}  "
-          f"zipnn={'yes' if have_zipnn else 'not installed'}\n")
+    print(
+        f"z4ai={'yes' if have_z4ai else 'MISSING (core in progress)'}  "
+        f"native_accel={'yes' if native else 'no (numpy fallback)'}  "
+        f"zipnn={'yes' if have_zipnn else 'not installed'}\n"
+    )
 
     for dtype in args.dtypes:
         bpe = bytes_per_element(dtype)
@@ -171,8 +181,10 @@ def main(argv=None):
                     print(f"  zipnn errored: {e!r}")
 
         for r in rows:
-            print(f"{r['name']:<16}{r['ratio']:>8.3f}{r['comp_mbps']:>12.0f}"
-                  f"{r['decomp_mbps']:>14.0f}{('yes' if r['lossless'] else 'NO!'):>10}")
+            print(
+                f"{r['name']:<16}{r['ratio']:>8.3f}{r['comp_mbps']:>12.0f}"
+                f"{r['decomp_mbps']:>14.0f}{('yes' if r['lossless'] else 'NO!'):>10}"
+            )
 
         _verdict(rows)
         print()
@@ -187,9 +199,11 @@ def _verdict(rows):
         if base in by:
             b = by[base]
             dr = (z["ratio"] / b["ratio"] - 1) * 100
-            print(f"  z4ai vs {base}: ratio {dr:+.1f}%, "
-                  f"comp {z['comp_mbps']/b['comp_mbps']:.2f}x, "
-                  f"decomp {z['decomp_mbps']/b['decomp_mbps']:.2f}x")
+            print(
+                f"  z4ai vs {base}: ratio {dr:+.1f}%, "
+                f"comp {z['comp_mbps']/b['comp_mbps']:.2f}x, "
+                f"decomp {z['decomp_mbps']/b['decomp_mbps']:.2f}x"
+            )
 
 
 def _try_import(name: str) -> bool:

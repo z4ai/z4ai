@@ -11,6 +11,7 @@ Usage:
     python benchmarks/bench_sparse.py
     python benchmarks/bench_sparse.py --mb 64 --dtypes bf16 fp32
 """
+
 from __future__ import annotations
 
 import argparse
@@ -74,10 +75,14 @@ def main(argv=None):
 
     bpe = {"bf16": 2, "fp16": 2, "fp32": 4}
     have_zipnn = _zipnn_codec("bf16") is not None
-    print(f"z4ai sparse benchmark - {args.mb:g} MB/case, repeats={args.repeats}, "
-          f"zipnn={'yes' if have_zipnn else 'not available'}\n")
-    header = (f"{'dtype':<6}{'sparsity':>9}{'z4ai ratio':>12}{'zipnn ratio':>13}"
-              f"{'win':>9}{'comp MB/s':>11}{'lossless':>10}")
+    print(
+        f"z4ai sparse benchmark - {args.mb:g} MB/case, repeats={args.repeats}, "
+        f"zipnn={'yes' if have_zipnn else 'not available'}\n"
+    )
+    header = (
+        f"{'dtype':<6}{'sparsity':>9}{'z4ai ratio':>12}{'zipnn ratio':>13}"
+        f"{'win':>9}{'comp MB/s':>11}{'lossless':>10}"
+    )
     print(header)
     print("-" * len(header))
 
@@ -99,15 +104,23 @@ def main(argv=None):
                 cb = pair[0](bytearray(data))
                 zipnn_ratio = len(data) / len(cb)
 
-            win = (z4ai_ratio / zipnn_ratio - 1) * 100 if zipnn_ratio == zipnn_ratio else float("nan")
+            win = (
+                (z4ai_ratio / zipnn_ratio - 1) * 100
+                if zipnn_ratio == zipnn_ratio
+                else float("nan")
+            )
             if win == win:
                 wins.append(win)
-            print(f"{dtype:<6}{s:>9.2f}{z4ai_ratio:>12.3f}{zipnn_ratio:>13.3f}"
-                  f"{win:>+8.1f}%{mb / c_sec:>11.0f}{('yes' if lossless else 'NO!'):>10}")
+            print(
+                f"{dtype:<6}{s:>9.2f}{z4ai_ratio:>12.3f}{zipnn_ratio:>13.3f}"
+                f"{win:>+8.1f}%{mb / c_sec:>11.0f}{('yes' if lossless else 'NO!'):>10}"
+            )
 
     if wins:
-        print(f"\nz4ai beats ZipNN on ratio in {sum(w > 0 for w in wins)}/{len(wins)} "
-              f"sparse cases (mean {sum(wins) / len(wins):+.1f}%).")
+        print(
+            f"\nz4ai beats ZipNN on ratio in {sum(w > 0 for w in wins)}/{len(wins)} "
+            f"sparse cases (mean {sum(wins) / len(wins):+.1f}%)."
+        )
 
 
 if __name__ == "__main__":

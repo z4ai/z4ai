@@ -35,8 +35,9 @@ def test_delta_roundtrip_is_lossless(dtype):
 @pytest.mark.parametrize("dtype", ["bf16", "fp32"])
 def test_delta_beats_from_scratch_on_similar_checkpoints(dtype):
     """The whole point: a near-identical checkpoint stores far smaller as a delta."""
-    base = (np.random.default_rng(0).standard_normal(2_000_000).astype(np.float32)
-            * np.float32(0.02))
+    base = np.random.default_rng(0).standard_normal(2_000_000).astype(
+        np.float32
+    ) * np.float32(0.02)
     cur_f32 = _fine_tuned(base, frac_changed=0.05, seed=7)
     if dtype == "bf16":
         ref = f32_to_bf16_bytes(base)
@@ -62,7 +63,7 @@ def test_identical_checkpoint_compresses_to_almost_nothing():
 
 def test_numpy_array_input_roundtrips():
     rng = np.random.default_rng(5)
-    ref = (rng.standard_normal(500_000).astype(np.float32) * 0.02)
+    ref = rng.standard_normal(500_000).astype(np.float32) * 0.02
     cur = ref.copy()
     cur[:1000] += 1e-3
     blob = delta.compress(cur.astype("<f4"), ref.astype("<f4"), dtype="fp32")

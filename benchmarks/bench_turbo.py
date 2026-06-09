@@ -13,6 +13,7 @@ Each codec is verified byte-exact lossless. Reports ratio + throughput.
     python benchmarks/bench_turbo.py            # 64 MB/scenario
     python benchmarks/bench_turbo.py --mb 256 --level 3
 """
+
 from __future__ import annotations
 
 import argparse
@@ -53,7 +54,8 @@ def make_bf16(scenario: str, nbytes: int, seed: int = 0) -> bytes:
         return (w.view(np.uint32) >> 16).astype(np.uint16).tobytes()
     if scenario == "structured":
         base = (
-            rng.standard_normal(max(1, n // 64)).astype(np.float32).view(np.uint32) >> 16
+            rng.standard_normal(max(1, n // 64)).astype(np.float32).view(np.uint32)
+            >> 16
         ).astype(np.uint16)
         return np.tile(base, 64)[:n].tobytes()
     if scenario == "sparse":
@@ -97,8 +99,10 @@ def main(argv=None):
     p.add_argument("--scenarios", nargs="+", default=["iid", "structured", "sparse"])
     args = p.parse_args(argv)
 
-    print(f"Turbo benchmark - {args.mb:g} MB/scenario, level={args.level}, "
-          f"reps={args.reps}.  zipnn={'yes' if _HAVE_ZIPNN else 'no'}")
+    print(
+        f"Turbo benchmark - {args.mb:g} MB/scenario, level={args.level}, "
+        f"reps={args.reps}.  zipnn={'yes' if _HAVE_ZIPNN else 'no'}"
+    )
 
     for scen in args.scenarios:
         data = make_bf16(scen, int(args.mb * 1e6))
@@ -109,50 +113,66 @@ def main(argv=None):
         print("-" * len(hdr))
 
         rows = []
-        rows.append(run(
-            f"zstd-{args.level}",
-            lambda d: zstd.ZstdCompressor(level=args.level).compress(d),
-            lambda b: zstd.ZstdDecompressor().decompress(b),
-            data, args.reps,
-        ))
+        rows.append(
+            run(
+                f"zstd-{args.level}",
+                lambda d: zstd.ZstdCompressor(level=args.level).compress(d),
+                lambda b: zstd.ZstdDecompressor().decompress(b),
+                data,
+                args.reps,
+            )
+        )
         if _HAVE_Z4AI:
             try:
-                rows.append(run(
-                    "z4ai",
-                    lambda d: z4ai.compress(d, dtype="bf16"),
-                    lambda b: z4ai.decompress(b),
-                    data, args.reps,
-                ))
+                rows.append(
+                    run(
+                        "z4ai",
+                        lambda d: z4ai.compress(d, dtype="bf16"),
+                        lambda b: z4ai.decompress(b),
+                        data,
+                        args.reps,
+                    )
+                )
             except Exception as e:  # noqa: BLE001
                 print(f"  z4ai errored: {e!r}")
-        rows.append(run(
-            "z4ai.turbo",
-            lambda d: turbo.compress(d, width=2, level=args.level),
-            lambda b: turbo.decompress(b),
-            data, args.reps,
-        ))
+        rows.append(
+            run(
+                "z4ai.turbo",
+                lambda d: turbo.compress(d, width=2, level=args.level),
+                lambda b: turbo.decompress(b),
+                data,
+                args.reps,
+            )
+        )
         if _HAVE_ZIPNN:
             try:
                 z = zipnn.ZipNN(bytearray_dtype="bfloat16", input_format="byte")
-                rows.append(run(
-                    "zipnn",
-                    lambda d: z.compress(bytearray(d)),
-                    lambda b: z.decompress(b),
-                    data, args.reps,
-                ))
+                rows.append(
+                    run(
+                        "zipnn",
+                        lambda d: z.compress(bytearray(d)),
+                        lambda b: z.decompress(b),
+                        data,
+                        args.reps,
+                    )
+                )
             except Exception as e:  # noqa: BLE001
                 print(f"  zipnn errored: {e!r}")
 
         for r in rows:
-            print(f"{r['name']:<14}{r['ratio']:>9.3f}{r['comp']:>12.0f}"
-                  f"{r['decomp']:>14.0f}{('yes' if r['lossless'] else 'NO!'):>10}")
+            print(
+                f"{r['name']:<14}{r['ratio']:>9.3f}{r['comp']:>12.0f}"
+                f"{r['decomp']:>14.0f}{('yes' if r['lossless'] else 'NO!'):>10}"
+            )
 
         if _HAVE_ZIPNN:
             by = {r["name"]: r for r in rows}
             t, z = by.get("z4ai.turbo"), by.get("zipnn")
             if t and z:
-                print(f"  turbo vs zipnn: ratio {t['ratio']/z['ratio']:.2f}x, "
-                      f"comp {t['comp']/z['comp']:.2f}x, decomp {t['decomp']/z['decomp']:.2f}x")
+                print(
+                    f"  turbo vs zipnn: ratio {t['ratio']/z['ratio']:.2f}x, "
+                    f"comp {t['comp']/z['comp']:.2f}x, decomp {t['decomp']/z['decomp']:.2f}x"
+                )
 
 
 if __name__ == "__main__":

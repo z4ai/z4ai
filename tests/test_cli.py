@@ -37,6 +37,7 @@ def _bf16_like_bytes(n_elems: int, seed: int = 0) -> bytes:
 # width resolution
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.parametrize(
     "dtype,expected",
     [
@@ -82,6 +83,7 @@ def test_default_out_paths():
 # ---------------------------------------------------------------------------
 # end-to-end main() round-trips on files
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("dtype,width", [("bf16", 2), ("fp32", 4), ("uint8", 1)])
 def test_main_roundtrip_files(tmp_path, dtype, width):
@@ -156,10 +158,21 @@ def test_no_escalate_flag(tmp_path):
     blob = tmp_path / "w.z4ai"
     restored = tmp_path / "r.bin"
     src.write_bytes(original)
-    assert cli.main(
-        ["compress", str(src), "-o", str(blob), "--dtype", "bf16",
-         "--no-escalate", "-q"]
-    ) == 0
+    assert (
+        cli.main(
+            [
+                "compress",
+                str(src),
+                "-o",
+                str(blob),
+                "--dtype",
+                "bf16",
+                "--no-escalate",
+                "-q",
+            ]
+        )
+        == 0
+    )
     assert cli.main(["decompress", str(blob), "-o", str(restored), "-q"]) == 0
     assert restored.read_bytes() == original
 
@@ -168,6 +181,7 @@ def test_no_escalate_flag(tmp_path):
 # stdin/stdout and `python -m z4ai`
 # ---------------------------------------------------------------------------
 
+
 def test_python_dash_m_stdin_stdout_roundtrip(tmp_path):
     original = _bf16_like_bytes(4096, seed=7)
     env = dict(os.environ)
@@ -175,13 +189,19 @@ def test_python_dash_m_stdin_stdout_roundtrip(tmp_path):
 
     comp = subprocess.run(
         [sys.executable, "-m", "z4ai", "compress", "-", "--dtype", "bf16", "-q"],
-        input=original, stdout=subprocess.PIPE, env=env, check=True,
+        input=original,
+        stdout=subprocess.PIPE,
+        env=env,
+        check=True,
     )
     assert comp.stdout[:4] == b"Z4AI"
 
     deco = subprocess.run(
         [sys.executable, "-m", "z4ai", "decompress", "-", "-q"],
-        input=comp.stdout, stdout=subprocess.PIPE, env=env, check=True,
+        input=comp.stdout,
+        stdout=subprocess.PIPE,
+        env=env,
+        check=True,
     )
     assert deco.stdout == original
 

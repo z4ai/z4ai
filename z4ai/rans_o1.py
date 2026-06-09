@@ -68,13 +68,14 @@ def _thread_pool() -> ThreadPoolExecutor:
                 )
     return _pool
 
+
 O1_PROB_BITS = 12
 O1_SCALE = 1 << O1_PROB_BITS  # 4096 — must match O1_SCALE in _native/rans.c
-_NSEG = 4                     # contiguous segments per chunk (ILP within a chunk)
+_NSEG = 4  # contiguous segments per chunk (ILP within a chunk)
 
 # Plane payload framing.  All little-endian.
 _MAGIC = b"R1"
-_HDR = struct.Struct("<2sBxIIH")   # magic, nseg, pad, n_total, freq_blob_len, n_chunks
+_HDR = struct.Struct("<2sBxIIH")  # magic, nseg, pad, n_total, freq_blob_len, n_chunks
 _U32 = struct.Struct("<I")
 
 # Below this a single chunk already codes in well under a few ms, so parallel
@@ -101,9 +102,23 @@ def _lib():
         u8 = ctypes.POINTER(ctypes.c_uint8)
         u16 = ctypes.POINTER(ctypes.c_uint16)
         lib.z4ai_rans_o1_encode.restype = ctypes.c_size_t
-        lib.z4ai_rans_o1_encode.argtypes = [u8, ctypes.c_size_t, ctypes.c_int, u16, u8, ctypes.c_size_t]
+        lib.z4ai_rans_o1_encode.argtypes = [
+            u8,
+            ctypes.c_size_t,
+            ctypes.c_int,
+            u16,
+            u8,
+            ctypes.c_size_t,
+        ]
         lib.z4ai_rans_o1_decode.restype = None
-        lib.z4ai_rans_o1_decode.argtypes = [u8, ctypes.c_size_t, ctypes.c_size_t, ctypes.c_int, u16, u8]
+        lib.z4ai_rans_o1_decode.argtypes = [
+            u8,
+            ctypes.c_size_t,
+            ctypes.c_size_t,
+            ctypes.c_int,
+            u16,
+            u8,
+        ]
     except AttributeError:  # pragma: no cover - stale prebuilt lib without order-1
         return None
     # Native order-1 joint-histogram builder (optional; absent in an older
@@ -113,7 +128,13 @@ def _lib():
     u32 = ctypes.POINTER(ctypes.c_uint32)
     try:
         lib.z4ai_rans_o1_hist.restype = None
-        lib.z4ai_rans_o1_hist.argtypes = [u8, ctypes.c_size_t, u32, ctypes.c_size_t, u32]
+        lib.z4ai_rans_o1_hist.argtypes = [
+            u8,
+            ctypes.c_size_t,
+            u32,
+            ctypes.c_size_t,
+            u32,
+        ]
     except AttributeError:  # pragma: no cover - stale prebuilt lib
         pass
     _bound_lib = lib
@@ -168,8 +189,10 @@ def _build_model(src: np.ndarray, n_chunks: int) -> np.ndarray:
         u8 = ctypes.POINTER(ctypes.c_uint8)
         u32 = ctypes.POINTER(ctypes.c_uint32)
         lib.z4ai_rans_o1_hist(
-            src.ctypes.data_as(u8), ctypes.c_size_t(n),
-            reset_arr.ctypes.data_as(u32), ctypes.c_size_t(reset_arr.size),
+            src.ctypes.data_as(u8),
+            ctypes.c_size_t(n),
+            reset_arr.ctypes.data_as(u32),
+            ctypes.c_size_t(reset_arr.size),
             joint_flat.ctypes.data_as(u32),
         )
         joint = joint_flat.reshape(256, 256)
@@ -190,8 +213,11 @@ def _build_model(src: np.ndarray, n_chunks: int) -> np.ndarray:
         row = joint[c]
         if row.sum() == 0:
             continue
-        freq[c] = _rans._normalize_to(row, O1_SCALE) if hasattr(_rans, "_normalize_to") \
+        freq[c] = (
+            _rans._normalize_to(row, O1_SCALE)
+            if hasattr(_rans, "_normalize_to")
             else _normalize_row(row)
+        )
     return freq
 
 
@@ -263,8 +289,12 @@ def _encode_chunk(lib, src: np.ndarray, freq: np.ndarray) -> bytes:
     u8 = ctypes.POINTER(ctypes.c_uint8)
     u16 = ctypes.POINTER(ctypes.c_uint16)
     length = lib.z4ai_rans_o1_encode(
-        src.ctypes.data_as(u8), ctypes.c_size_t(n), ctypes.c_int(_NSEG),
-        freq.ctypes.data_as(u16), out.ctypes.data_as(u8), ctypes.c_size_t(cap),
+        src.ctypes.data_as(u8),
+        ctypes.c_size_t(n),
+        ctypes.c_int(_NSEG),
+        freq.ctypes.data_as(u16),
+        out.ctypes.data_as(u8),
+        ctypes.c_size_t(cap),
     )
     if length == 0:
         raise RuntimeError("order-1 rANS encode overflow")
@@ -277,9 +307,12 @@ def _decode_chunk(lib, payload: bytes, freq: np.ndarray, n: int) -> np.ndarray:
     u8 = ctypes.POINTER(ctypes.c_uint8)
     u16 = ctypes.POINTER(ctypes.c_uint16)
     lib.z4ai_rans_o1_decode(
-        p.ctypes.data_as(u8), ctypes.c_size_t(len(payload)),
-        ctypes.c_size_t(n), ctypes.c_int(_NSEG),
-        freq.ctypes.data_as(u16), out.ctypes.data_as(u8),
+        p.ctypes.data_as(u8),
+        ctypes.c_size_t(len(payload)),
+        ctypes.c_size_t(n),
+        ctypes.c_int(_NSEG),
+        freq.ctypes.data_as(u16),
+        out.ctypes.data_as(u8),
     )
     return out
 
@@ -303,7 +336,11 @@ def compress(data: bytes) -> bytes:
     if k == 1:
         payloads = [_encode_chunk(lib, src, freq)]
     else:
-        payloads = list(_thread_pool().map(lambda b: _encode_chunk(lib, src[b[0]:b[1]], freq), bounds))
+        payloads = list(
+            _thread_pool().map(
+                lambda b: _encode_chunk(lib, src[b[0] : b[1]], freq), bounds
+            )
+        )
     head = _HDR.pack(_MAGIC, _NSEG, n, len(blob), k)
     parts = [head, blob]
     for b, pay in zip(bounds, payloads):
@@ -323,7 +360,7 @@ def decompress(blob: bytes) -> bytes:
     if lib is None:
         raise RuntimeError("native order-1 rANS unavailable for decode")
     off = _HDR.size
-    freq = _deserialize_model(bytes(blob[off:off + blob_len]))
+    freq = _deserialize_model(bytes(blob[off : off + blob_len]))
     off += blob_len
     clens = []
     for _ in range(k):
@@ -332,7 +369,7 @@ def decompress(blob: bytes) -> bytes:
         clens.append(cl)
     payloads = []
     for cl in clens:
-        payloads.append(bytes(blob[off:off + cl]))
+        payloads.append(bytes(blob[off : off + cl]))
         off += cl
     bounds = _bounds(n, k)
     chunk_ns = [hi - lo for lo, hi in bounds]
@@ -340,5 +377,9 @@ def decompress(blob: bytes) -> bytes:
         parts = [_decode_chunk(lib, payloads[0], freq, chunk_ns[0])]
     else:
         idx = list(range(k))
-        parts = list(_thread_pool().map(lambda i: _decode_chunk(lib, payloads[i], freq, chunk_ns[i]), idx))
+        parts = list(
+            _thread_pool().map(
+                lambda i: _decode_chunk(lib, payloads[i], freq, chunk_ns[i]), idx
+            )
+        )
     return np.concatenate(parts).tobytes()

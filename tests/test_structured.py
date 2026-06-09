@@ -12,6 +12,7 @@ there once produced a `NameError` that the i.i.d. tests did not catch because
 they never hit a strongly-compressible plane. These tests pin that path down:
 losslessness AND that structured data really does compress far better than noise.
 """
+
 import numpy as np
 import pytest
 

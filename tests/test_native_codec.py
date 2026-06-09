@@ -10,6 +10,7 @@ pure-Python :mod:`z4ai.chunked` pipeline, so the contract is:
 Every test is skipped cleanly when the extension is not built, so CI without a C
 compiler / zstd headers still passes (the chunked path falls back to Python).
 """
+
 from __future__ import annotations
 
 import os
@@ -48,7 +49,9 @@ def _py_decompress(blob):
 
 
 @pytest.mark.parametrize("dtype,width", list(WIDTHS.items()))
-@pytest.mark.parametrize("n", [0, 1, 2, 3, 7, 8, 15, 16, 17, 255, 4096, 4097, 1_000_003])
+@pytest.mark.parametrize(
+    "n", [0, 1, 2, 3, 7, 8, 15, 16, 17, 255, 4096, 4097, 1_000_003]
+)
 def test_native_roundtrip(dtype, width, n):
     raw = bytes(np.random.randint(0, 256, n, np.uint8))
     blob = nc.compress(raw, width, 1, CPU, 2 << 20)
@@ -83,8 +86,7 @@ def test_realistic_float_weights_roundtrip():
 
 
 def test_levels_and_threads_roundtrip():
-    raw = (np.random.default_rng(1).standard_normal(300_000)
-           .astype(np.float32).tobytes())
+    raw = np.random.default_rng(1).standard_normal(300_000).astype(np.float32).tobytes()
     for level in (-1, 1, 3, 9):
         for threads in (1, 2, CPU):
             blob = nc.compress(raw, 4, level, threads, 1 << 20)
@@ -92,8 +94,7 @@ def test_levels_and_threads_roundtrip():
 
 
 def test_single_threaded_matches_multi():
-    raw = (np.random.default_rng(2).standard_normal(400_000)
-           .astype(np.float32).tobytes())
+    raw = np.random.default_rng(2).standard_normal(400_000).astype(np.float32).tobytes()
     b1 = nc.compress(raw, 4, 1, 1, 1 << 20)
     bN = nc.compress(raw, 4, 1, CPU, 1 << 20)
     # different thread counts may pick different chunk boundaries only if chunk

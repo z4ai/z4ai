@@ -33,12 +33,14 @@ import numpy as np
 
 PROB_BITS = 14
 PROB_SCALE = 1 << PROB_BITS  # 16384 - must match PROB_BITS in _native/rans.c
-RANS_L = 1 << 23             # normalised-interval lower bound; must match _native/rans.c
+RANS_L = 1 << 23  # normalised-interval lower bound; must match _native/rans.c
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _NATIVE_DIR = os.path.join(_HERE, "_native")
 _SRC = os.path.join(_NATIVE_DIR, "rans.c")
-_LIB = os.path.join(_NATIVE_DIR, "libz4ai_rans" + (".dylib" if sys.platform == "darwin" else ".so"))
+_LIB = os.path.join(
+    _NATIVE_DIR, "libz4ai_rans" + (".dylib" if sys.platform == "darwin" else ".so")
+)
 
 _HEADER = Struct("<Q")  # element count
 _lib = None
@@ -119,16 +121,37 @@ def _load():
         u8p = ctypes.POINTER(ctypes.c_uint8)
         u16p = ctypes.POINTER(ctypes.c_uint16)
         lib.z4ai_rans_encode.restype = ctypes.c_size_t
-        lib.z4ai_rans_encode.argtypes = [u8p, ctypes.c_size_t, u16p, u16p, u8p, ctypes.c_size_t]
+        lib.z4ai_rans_encode.argtypes = [
+            u8p,
+            ctypes.c_size_t,
+            u16p,
+            u16p,
+            u8p,
+            ctypes.c_size_t,
+        ]
         lib.z4ai_rans_decode.restype = None
-        lib.z4ai_rans_decode.argtypes = [u8p, ctypes.c_size_t, u16p, u16p, u8p, u8p, ctypes.c_size_t]
+        lib.z4ai_rans_decode.argtypes = [
+            u8p,
+            ctypes.c_size_t,
+            u16p,
+            u16p,
+            u8p,
+            u8p,
+            ctypes.c_size_t,
+        ]
         # Block-wise decoder that builds cum/slot2sym in C from freq.  Lets the
         # per-chunk LOCAL-model path (compress_adaptive) decode each chunk without
         # rebuilding the 16384-entry slot table in NumPy per chunk (that overhead,
         # not the kernel, capped small-block decode at ~375 MB/s vs ~2.4 GB/s raw).
         try:
             lib.z4ai_rans_decode_f.restype = None
-            lib.z4ai_rans_decode_f.argtypes = [u8p, ctypes.c_size_t, u16p, u8p, ctypes.c_size_t]
+            lib.z4ai_rans_decode_f.argtypes = [
+                u8p,
+                ctypes.c_size_t,
+                u16p,
+                u8p,
+                ctypes.c_size_t,
+            ]
         except AttributeError:  # pragma: no cover - only with a stale prebuilt lib
             pass
         # One-call local-model chunk encoder (histogram+normalize+encode in C, GIL
@@ -136,7 +159,13 @@ def _load():
         # path; absent in a stale prebuilt lib (guarded — falls back to Python).
         try:
             lib.z4ai_rans_encode_local.restype = ctypes.c_size_t
-            lib.z4ai_rans_encode_local.argtypes = [u8p, ctypes.c_size_t, u8p, ctypes.c_size_t, u16p]
+            lib.z4ai_rans_encode_local.argtypes = [
+                u8p,
+                ctypes.c_size_t,
+                u8p,
+                ctypes.c_size_t,
+                u16p,
+            ]
         except AttributeError:  # pragma: no cover - only with a stale prebuilt lib
             pass
         # Optional fast native histogram (present in current rans.c; absent in an
@@ -169,15 +198,16 @@ def _histogram(lib, src: np.ndarray) -> np.ndarray:
 
     def _one(a: np.ndarray) -> np.ndarray:
         h = np.zeros(256, dtype=np.uint32)
-        lib.z4ai_rans_hist(a.ctypes.data_as(u8), ctypes.c_size_t(a.size),
-                           h.ctypes.data_as(u32))
+        lib.z4ai_rans_hist(
+            a.ctypes.data_as(u8), ctypes.c_size_t(a.size), h.ctypes.data_as(u32)
+        )
         return h
 
     if n < 2 * _MIN_CHUNK_BYTES:
         return _one(src).astype(np.int64)
     k = _chunk_count(n)
     bounds = _bounds(n, k)
-    parts = list(_thread_pool().map(lambda b: _one(src[b[0]:b[1]]), bounds))
+    parts = list(_thread_pool().map(lambda b: _one(src[b[0] : b[1]]), bounds))
     total = parts[0].astype(np.int64)
     for p in parts[1:]:
         total += p
@@ -251,11 +281,11 @@ def _tables(freq: np.ndarray):
 # never reaches 2^63), so :func:`decompress` dispatches on that bit and still
 # decodes every previously-written frame byte-for-byte.
 _CHUNK_FLAG = 1 << 63
-_CHUNK_HDR = Struct("<QH")        # (count | flag, n_chunks)
-_LEN32 = Struct("<I")             # per-chunk compressed length
+_CHUNK_HDR = Struct("<QH")  # (count | flag, n_chunks)
+_LEN32 = Struct("<I")  # per-chunk compressed length
 # Below this a single stream already codes in well under a millisecond, so the
 # thread-pool fan-out would cost more than it saves: code it as one chunk.
-_MIN_CHUNK_BYTES = 1 << 19        # 512 KiB
+_MIN_CHUNK_BYTES = 1 << 19  # 512 KiB
 _MAX_CHUNKS = 64
 
 _pool_lock = Lock()
@@ -268,6 +298,7 @@ def _thread_pool():
         with _pool_lock:
             if _pool is None:
                 from concurrent.futures import ThreadPoolExecutor
+
                 _pool = ThreadPoolExecutor(
                     max_workers=os.cpu_count() or 1, thread_name_prefix="z4ai-rans"
                 )
@@ -294,9 +325,12 @@ def _encode_one(lib, src: np.ndarray, freq: np.ndarray, cum: np.ndarray) -> byte
     u8 = ctypes.POINTER(ctypes.c_uint8)
     u16 = ctypes.POINTER(ctypes.c_uint16)
     length = lib.z4ai_rans_encode(
-        src.ctypes.data_as(u8), ctypes.c_size_t(n),
-        freq.ctypes.data_as(u16), cum.ctypes.data_as(u16),
-        out.ctypes.data_as(u8), ctypes.c_size_t(cap),
+        src.ctypes.data_as(u8),
+        ctypes.c_size_t(n),
+        freq.ctypes.data_as(u16),
+        cum.ctypes.data_as(u16),
+        out.ctypes.data_as(u8),
+        ctypes.c_size_t(cap),
     )
     if length == 0:
         raise RuntimeError("rANS encode overflow")
@@ -332,7 +366,7 @@ def compress(data: bytes) -> bytes:
     bounds = _bounds(n, k)
     pool = _thread_pool()
     payloads = list(
-        pool.map(lambda b: _encode_one(lib, src[b[0]:b[1]], freq, cum), bounds)
+        pool.map(lambda b: _encode_one(lib, src[b[0] : b[1]], freq, cum), bounds)
     )
     header = _CHUNK_HDR.pack(n | _CHUNK_FLAG, k) + freq.tobytes()
     lens = b"".join(_LEN32.pack(len(p)) for p in payloads)
@@ -372,7 +406,7 @@ def _decode_python(payload: bytes, freq: np.ndarray, n: int) -> bytes:
     # this tight, inherently-sequential loop.
     fr = freq.astype(np.int64).tolist()
     cu = cum.astype(np.int64).tolist()
-    s2s = slot2sym.tobytes()           # indexing a bytes object yields an int
+    s2s = slot2sym.tobytes()  # indexing a bytes object yields an int
     out = bytearray(n)
     data = payload
     dlen = len(data)
@@ -409,9 +443,13 @@ def _decode_one(lib, payload: bytes, freq, cum, slot2sym, n: int) -> bytes:
     u8 = ctypes.POINTER(ctypes.c_uint8)
     u16 = ctypes.POINTER(ctypes.c_uint16)
     lib.z4ai_rans_decode(
-        payload_arr.ctypes.data_as(u8), ctypes.c_size_t(payload_arr.size),
-        freq.ctypes.data_as(u16), cum.ctypes.data_as(u16),
-        slot2sym.ctypes.data_as(u8), out.ctypes.data_as(u8), ctypes.c_size_t(n),
+        payload_arr.ctypes.data_as(u8),
+        ctypes.c_size_t(payload_arr.size),
+        freq.ctypes.data_as(u16),
+        cum.ctypes.data_as(u16),
+        slot2sym.ctypes.data_as(u8),
+        out.ctypes.data_as(u8),
+        ctypes.c_size_t(n),
     )
     return out.tobytes()
 
@@ -442,16 +480,14 @@ def decompress(blob: bytes) -> bytes:
             clens.append(cl)
         payloads = []
         for cl in clens:
-            payloads.append(bytes(blob[off:off + cl]))
+            payloads.append(bytes(blob[off : off + cl]))
             off += cl
         bounds = _bounds(n, k)
         sizes = [hi - lo for lo, hi in bounds]
         cum, slot2sym = _tables(freq)
         if lib is None:
             _warn_fallback_once()
-            parts = [
-                _decode_python(payloads[i], freq, sizes[i]) for i in range(k)
-            ]
+            parts = [_decode_python(payloads[i], freq, sizes[i]) for i in range(k)]
         elif k == 1:
             parts = [_decode_one(lib, payloads[0], freq, cum, slot2sym, sizes[0])]
         else:
@@ -505,7 +541,7 @@ def decompress(blob: bytes) -> bytes:
 # only via :func:`decompress_adaptive` (the codec dispatches on its plane method),
 # so it never collides with :func:`decompress`'s single-stream/shared-chunk frames.
 _ADAPT_FLAG = 1 << 62
-_ADAPT_HDR = Struct("<QII")         # (count | _ADAPT_FLAG, n_chunks, freq_blob_len)
+_ADAPT_HDR = Struct("<QII")  # (count | _ADAPT_FLAG, n_chunks, freq_blob_len)
 # Target chunk size.  64 KiB is small enough that a chunk rarely straddles two
 # tensors (so it tracks each tensor's local exponent distribution even for the
 # many small tensors of a real checkpoint - measured exp ratio 2.75x at 256 KiB
@@ -519,11 +555,13 @@ _ADAPT_CHUNK_BYTES = 1 << 16
 def _pack_freqs(freq_bytes: bytes) -> bytes:
     """zstd-pack the concatenated per-chunk freq tables (sparse + similar -> ~6%)."""
     import zstandard as _zstd
+
     return _zstd.ZstdCompressor(level=3).compress(freq_bytes)
 
 
 def _unpack_freqs(blob: bytes, n_tables: int):
     import zstandard as _zstd
+
     raw = _zstd.ZstdDecompressor().decompress(blob, max_output_size=n_tables * 512)
     return [
         np.frombuffer(raw, dtype="<u2", count=256, offset=i * 512).astype(np.uint16)
@@ -554,8 +592,10 @@ def _encode_chunk_local(lib, chunk: np.ndarray):
         u8 = ctypes.POINTER(ctypes.c_uint8)
         u16 = ctypes.POINTER(ctypes.c_uint16)
         length = lib.z4ai_rans_encode_local(
-            chunk.ctypes.data_as(u8), ctypes.c_size_t(n),
-            out.ctypes.data_as(u8), ctypes.c_size_t(cap),
+            chunk.ctypes.data_as(u8),
+            ctypes.c_size_t(n),
+            out.ctypes.data_as(u8),
+            ctypes.c_size_t(cap),
             freq.ctypes.data_as(u16),
         )
         if length == 0:
@@ -587,7 +627,9 @@ def compress_adaptive(data: bytes) -> bytes:
         results = [_encode_chunk_local(lib, src)]
     else:
         results = list(
-            _thread_pool().map(lambda b: _encode_chunk_local(lib, src[b[0]:b[1]]), bounds)
+            _thread_pool().map(
+                lambda b: _encode_chunk_local(lib, src[b[0] : b[1]]), bounds
+            )
         )
     freq_blob = _pack_freqs(b"".join(f for f, _ in results))
     header = _ADAPT_HDR.pack(n | _ADAPT_FLAG, k, len(freq_blob))
@@ -613,8 +655,11 @@ def _decode_chunk_f(lib, payload: bytes, freq: np.ndarray, n: int) -> bytes:
     u8 = ctypes.POINTER(ctypes.c_uint8)
     u16 = ctypes.POINTER(ctypes.c_uint16)
     lib.z4ai_rans_decode_f(
-        payload_arr.ctypes.data_as(u8), ctypes.c_size_t(payload_arr.size),
-        freq.ctypes.data_as(u16), out.ctypes.data_as(u8), ctypes.c_size_t(n),
+        payload_arr.ctypes.data_as(u8),
+        ctypes.c_size_t(payload_arr.size),
+        freq.ctypes.data_as(u16),
+        out.ctypes.data_as(u8),
+        ctypes.c_size_t(n),
     )
     return out.tobytes()
 
@@ -634,11 +679,11 @@ def decompress_adaptive(blob: bytes) -> bytes:
         (cl,) = _LEN32.unpack_from(blob, off)
         off += _LEN32.size
         clens.append(cl)
-    freqs = _unpack_freqs(blob[off:off + freq_blob_len], k)
+    freqs = _unpack_freqs(blob[off : off + freq_blob_len], k)
     off += freq_blob_len
     payloads = []
     for cl in clens:
-        payloads.append(bytes(blob[off:off + cl]))
+        payloads.append(bytes(blob[off : off + cl]))
         off += cl
     bounds = _bounds(n, k)
     lib = _load()
@@ -665,8 +710,10 @@ def decompress_adaptive(blob: bytes) -> bytes:
         pa = np.frombuffer(payloads[i], dtype=np.uint8)
         sub = out[lo:hi]
         lib.z4ai_rans_decode_f(
-            pa.ctypes.data_as(u8), ctypes.c_size_t(pa.size),
-            freqs[i].ctypes.data_as(u16), sub.ctypes.data_as(u8),
+            pa.ctypes.data_as(u8),
+            ctypes.c_size_t(pa.size),
+            freqs[i].ctypes.data_as(u16),
+            sub.ctypes.data_as(u8),
             ctypes.c_size_t(hi - lo),
         )
 

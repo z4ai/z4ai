@@ -32,6 +32,7 @@ and prints a per-component byte breakdown plus a one-line verdict.
 Run:  ``.venv/bin/python benchmarks/checkpoint_bench.py --mb 96``
       ``.venv/bin/python benchmarks/checkpoint_bench.py --mb 128 --dtype fp32``
 """
+
 from __future__ import annotations
 
 import argparse
@@ -141,7 +142,9 @@ def build_checkpoint(
         v_elems = max(1024, int(n_elems_total * 0.12))
         # Slowly varying, strictly positive: a smoothed cumulative random walk
         # squared. This is low-entropy along the buffer (neighbours correlated).
-        walk = np.cumsum(rng.standard_normal(v_elems).astype(np.float32) * np.float32(0.01))
+        walk = np.cumsum(
+            rng.standard_normal(v_elems).astype(np.float32) * np.float32(0.01)
+        )
         v_f32 = (np.abs(walk) * np.float32(0.001) + np.float32(1e-6)).astype(np.float32)
         emit("adam_v_state", _encode(v_f32, dtype))
 
@@ -217,8 +220,12 @@ def _mbps(nbytes: int, seconds: float) -> float:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--mb", type=float, default=96.0, help="approx total checkpoint size in MB")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--mb", type=float, default=96.0, help="approx total checkpoint size in MB"
+    )
     ap.add_argument("--dtype", choices=["bf16", "fp16", "fp32"], default="bf16")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--zstd-level", type=int, default=3)
@@ -242,8 +249,10 @@ def main() -> int:
     )
     total = len(raw)
 
-    print(f"Checkpoint: dtype={args.dtype}  seed={args.seed}  size={total / 1e6:.2f} MB "
-          f"({total / (1024*1024):.2f} MiB)")
+    print(
+        f"Checkpoint: dtype={args.dtype}  seed={args.seed}  size={total / 1e6:.2f} MB "
+        f"({total / (1024*1024):.2f} MiB)"
+    )
     print("Component breakdown (file order):")
     for name, nb in breakdown:
         print(f"  {name:<28} {nb / 1e6:8.2f} MB  ({100.0 * nb / total:5.1f}%)")
@@ -255,8 +264,10 @@ def main() -> int:
     rows.append(("ZipNN", run_zipnn(raw, args.dtype)))
     rows.append((f"zstd-{args.zstd_level}", run_zstd(raw, args.zstd_level)))
 
-    print(f"{'codec':<12} {'ratio':>7}  {'comp MB/s':>10}  {'decomp MB/s':>12}  "
-          f"{'size MB':>9}  lossless")
+    print(
+        f"{'codec':<12} {'ratio':>7}  {'comp MB/s':>10}  {'decomp MB/s':>12}  "
+        f"{'size MB':>9}  lossless"
+    )
     print("-" * 70)
     all_lossless = True
     z4ai_ratio: Optional[float] = None
@@ -267,9 +278,11 @@ def main() -> int:
             continue
         csize, c_t, d_t, lossless = res
         ratio = total / csize if csize else float("inf")
-        print(f"{name:<12} {ratio:>7.3f}  {_mbps(total, c_t):>10.1f}  "
-              f"{_mbps(total, d_t):>12.1f}  {csize / 1e6:>9.2f}  "
-              f"{'yes' if lossless else 'NO!!':>8}")
+        print(
+            f"{name:<12} {ratio:>7.3f}  {_mbps(total, c_t):>10.1f}  "
+            f"{_mbps(total, d_t):>12.1f}  {csize / 1e6:>9.2f}  "
+            f"{'yes' if lossless else 'NO!!':>8}"
+        )
         all_lossless = all_lossless and lossless
         if name == "z4ai":
             z4ai_ratio = ratio
@@ -286,19 +299,27 @@ def main() -> int:
     if z4ai_ratio is not None and zipnn_ratio is not None:
         if z4ai_ratio > zipnn_ratio:
             pct = 100.0 * (z4ai_ratio / zipnn_ratio - 1.0)
-            print(f"VERDICT: z4ai beats ZipNN by {pct:.1f}% on this structured checkpoint "
-                  f"({z4ai_ratio:.3f}x vs {zipnn_ratio:.3f}x) because global LZ dedups the "
-                  f"tied/repeated tensors ZipNN's 256 KB Huffman chunks miss.")
+            print(
+                f"VERDICT: z4ai beats ZipNN by {pct:.1f}% on this structured checkpoint "
+                f"({z4ai_ratio:.3f}x vs {zipnn_ratio:.3f}x) because global LZ dedups the "
+                f"tied/repeated tensors ZipNN's 256 KB Huffman chunks miss."
+            )
         elif z4ai_ratio < zipnn_ratio:
             pct = 100.0 * (zipnn_ratio / z4ai_ratio - 1.0)
-            print(f"VERDICT: ZipNN beats z4ai by {pct:.1f}% here "
-                  f"({zipnn_ratio:.3f}x vs {z4ai_ratio:.3f}x) - z4ai's global window did not "
-                  f"win on this configuration. Reporting honestly.")
+            print(
+                f"VERDICT: ZipNN beats z4ai by {pct:.1f}% here "
+                f"({zipnn_ratio:.3f}x vs {z4ai_ratio:.3f}x) - z4ai's global window did not "
+                f"win on this configuration. Reporting honestly."
+            )
         else:
-            print(f"VERDICT: z4ai and ZipNN tie at {z4ai_ratio:.3f}x on this configuration.")
+            print(
+                f"VERDICT: z4ai and ZipNN tie at {z4ai_ratio:.3f}x on this configuration."
+            )
     elif z4ai_ratio is not None:
-        print(f"VERDICT: z4ai ratio {z4ai_ratio:.3f}x; ZipNN unavailable in this environment "
-              f"(install zipnn[/torch] to compare).")
+        print(
+            f"VERDICT: z4ai ratio {z4ai_ratio:.3f}x; ZipNN unavailable in this environment "
+            f"(install zipnn[/torch] to compare)."
+        )
     return 0
 
 

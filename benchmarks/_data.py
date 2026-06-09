@@ -9,6 +9,7 @@ representative - uniform-random bytes would understate every codec's ratio.
 
 Shared by ``tests/`` and ``benchmarks/`` so both exercise identical inputs.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -43,7 +44,7 @@ def make_weights(
     if mixture:
         scales = np.array([0.006, 0.02, 0.05, 0.15], dtype=np.float32)
         which = rng.integers(0, len(scales), size=n_elements)
-        f32 = (rng.standard_normal(n_elements).astype(np.float32) * scales[which])
+        f32 = rng.standard_normal(n_elements).astype(np.float32) * scales[which]
     else:
         f32 = rng.standard_normal(n_elements).astype(np.float32) * np.float32(0.02)
 
@@ -62,7 +63,9 @@ def bytes_per_element(dtype: str) -> int:
     return {"bf16": 2, "fp16": 2, "fp32": 4, "fp64": 8}[dtype]
 
 
-def make_scenario(scenario: str, n_elements: int, dtype: str = "bf16", seed: int = 0) -> bytes:
+def make_scenario(
+    scenario: str, n_elements: int, dtype: str = "bf16", seed: int = 0
+) -> bytes:
     """Synthetic weights with a chosen *structure*, to probe codec behaviour.
 
     Scenarios model real-checkpoint phenomena that distinguish whole-plane Zstd

@@ -9,6 +9,7 @@ mask 762x vs zstd-3 1416x), violating the "never lose to plain Zstd" invariant.
 ``codec._opaque_primary_frame`` now keeps the best of {plain high-level,
 whole-window+LDM, store}.  These tests lock that in.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -48,7 +49,8 @@ def _repeated_block():
 
 # Factories (not the bytes themselves) keep pytest's parametrize ids small.
 @pytest.mark.parametrize(
-    "make", [_tiled_u8, _int32_ramp, _triangular_mask, _repeated_block],
+    "make",
+    [_tiled_u8, _int32_ramp, _triangular_mask, _repeated_block],
     ids=["tiled_u8", "int32_ramp", "triangular_mask", "repeated_block"],
 )
 def test_opaque_never_loses_to_zstd3(make):
@@ -77,7 +79,9 @@ def test_opaque_long_range_redundancy_caught():
     data = block * 4
     frame = z4ai.compress(data, dtype=None)
     assert z4ai.decompress(frame) == data
-    assert len(data) / len(frame) > 3.0, "opaque LDM candidate failed to dedup far repeats"
+    assert (
+        len(data) / len(frame) > 3.0
+    ), "opaque LDM candidate failed to dedup far repeats"
 
 
 def test_opaque_escalate_roundtrips_and_helps_when_monotonic():

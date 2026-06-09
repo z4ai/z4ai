@@ -33,7 +33,9 @@ def _gaussian(dtype, n=600 * 600):
 @pytest.mark.parametrize(
     "data",
     [
-        np.random.default_rng(1).integers(0, 256, size=500_000, dtype=np.uint8).tobytes(),
+        np.random.default_rng(1)
+        .integers(0, 256, size=500_000, dtype=np.uint8)
+        .tobytes(),
         _gaussian(np.float16),
         _gaussian(np.float32),
         _gaussian(np.float64),
@@ -48,9 +50,9 @@ def test_never_expands(data):
     raw = data if isinstance(data, (bytes, bytearray)) else data.tobytes()
     blob = z4ai.compress(data)
     assert bytes(z4ai.decompress(blob)) == raw
-    assert len(blob) <= len(raw) + _MAX_HEADER_SLACK, (
-        f"compressor EXPANDED {len(raw)} -> {len(blob)} bytes"
-    )
+    assert (
+        len(blob) <= len(raw) + _MAX_HEADER_SLACK
+    ), f"compressor EXPANDED {len(raw)} -> {len(blob)} bytes"
 
 
 def test_fp16_compresses_not_expands():

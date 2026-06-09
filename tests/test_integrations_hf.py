@@ -3,6 +3,7 @@
 
 Skipped entirely when torch + safetensors are not installed (the `hf` extra).
 """
+
 import os
 
 import pytest

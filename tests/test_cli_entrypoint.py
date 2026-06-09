@@ -61,7 +61,12 @@ def test_installed_script_roundtrip(tmp_path):
     packed = tmp_path / "w.z4ai"
     out = tmp_path / "w.out"
 
-    assert _run([exe, "compress", str(src), "-o", str(packed), "--dtype", "fp32"]).returncode == 0
+    assert (
+        _run(
+            [exe, "compress", str(src), "-o", str(packed), "--dtype", "fp32"]
+        ).returncode
+        == 0
+    )
     assert packed.exists()
     assert _run([exe, "decompress", str(packed), "-o", str(out)]).returncode == 0
     assert out.read_bytes() == src.read_bytes()

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Tests for the parallel Turbo codec (:mod:`z4ai.turbo`)."""
+
 import numpy as np
 import pytest
 
@@ -17,6 +18,7 @@ def _bf16_like(n, seed=0):
 
 
 # --- losslessness across widths, sizes, and worker counts --------------------
+
 
 @pytest.mark.parametrize("width", WIDTHS)
 @pytest.mark.parametrize("nbytes", [0, 1, 2, 7, 8, 1000, 100_003])
@@ -54,6 +56,7 @@ def test_roundtrip_random_bytes():
 
 # --- frame + guarantees -------------------------------------------------------
 
+
 def test_frame_magic():
     assert turbo.compress(_bf16_like(10_000), width=2)[:4] == turbo.MAGIC == b"ZRT1"
 
@@ -80,26 +83,27 @@ def test_workers_are_lossless_regardless_of_count():
 
 # --- competitive behaviours we must not regress ------------------------------
 
+
 def test_never_worse_than_raw_zstd():
     """The opaque fallback guarantees Turbo is never materially worse than a
     plain Zstd pass - even on element-repeating data where the byte-plane
     transpose would hurt."""
     import zstandard as zstd
 
-    base = _bf16_like(200_000)          # 400 KB base block
-    data = base * 16                    # 6.4 MB, repeats every 400 KB
+    base = _bf16_like(200_000)  # 400 KB base block
+    data = base * 16  # 6.4 MB, repeats every 400 KB
     blob = turbo.compress(data, width=2, workers=1)
     raw = zstd.ZstdCompressor(level=turbo.DEFAULT_LEVEL).compress(data)
     assert bytes(turbo.decompress(blob)) == data
-    assert len(blob) <= len(raw) * 1.02   # opaque fallback ~= raw zstd + header
-    assert len(blob) < len(data) // 8     # and it compressed a lot
+    assert len(blob) <= len(raw) * 1.02  # opaque fallback ~= raw zstd + header
+    assert len(blob) < len(data) // 8  # and it compressed a lot
 
 
 def test_compresses_iid_float_weights():
     data = _bf16_like(2_000_000)
     blob = turbo.compress(data, width=2)
     assert bytes(turbo.decompress(blob)) == data
-    assert len(data) / len(blob) > 1.2    # exponent-plane win
+    assert len(data) / len(blob) > 1.2  # exponent-plane win
 
 
 def test_picks_planes_for_float_and_opaque_for_repeats():

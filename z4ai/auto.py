@@ -146,6 +146,7 @@ def _brotli_blocks_decompress(payload: bytes, orig_len: int) -> bytes:
         )
     return out
 
+
 FLAG_NUMPY = 1 << 0
 
 # Public dtype code -> bitfield spec name understood by :mod:`z4ai.bitfield`.
@@ -163,10 +164,25 @@ _BITFIELD_SPECS = {
 
 # Public dtype code -> element width in bytes (for the byte-plane transpose).
 _DTYPE_WIDTHS = {
-    None: 1, "raw": 1, "uint8": 1, "int8": 1, "fp8_e4m3": 1, "fp8_e5m2": 1,
-    "bf16": 2, "fp16": 2, "float16": 2, "int16": 2, "uint16": 2,
-    "fp32": 4, "float32": 4, "int32": 4, "uint32": 4,
-    "fp64": 8, "float64": 8, "int64": 8, "uint64": 8,
+    None: 1,
+    "raw": 1,
+    "uint8": 1,
+    "int8": 1,
+    "fp8_e4m3": 1,
+    "fp8_e5m2": 1,
+    "bf16": 2,
+    "fp16": 2,
+    "float16": 2,
+    "int16": 2,
+    "uint16": 2,
+    "fp32": 4,
+    "float32": 4,
+    "int32": 4,
+    "uint32": 4,
+    "fp64": 8,
+    "float64": 8,
+    "int64": 8,
+    "uint64": 8,
 }
 
 
@@ -202,7 +218,9 @@ def _zstd_compress(buf: bytes, level: int) -> bytes:
     return zstd.ZstdCompressor(compression_params=params).compress(buf)
 
 
-def _compress_stream(buf: bytes, zlevel: int, bquality: Optional[int]) -> Tuple[int, bytes]:
+def _compress_stream(
+    buf: bytes, zlevel: int, bquality: Optional[int]
+) -> Tuple[int, bytes]:
     """Return ``(method, payload)`` for the smallest encoding of ``buf``."""
     best_method = M_STORE
     best = buf
@@ -272,11 +290,14 @@ def _decompress_stream(method: int, payload: bytes, orig_len: int) -> bytes:
 # Transform candidates: each returns (transform_id, spec_name, streams, tail)
 # --------------------------------------------------------------------------- #
 
+
 def _candidate_raw(body: bytes) -> Tuple[int, str, List[bytes], bytes]:
     return T_RAW, "", [body], b""
 
 
-def _candidate_byteplane(body: bytes, width: int) -> Tuple[int, str, List[bytes], bytes]:
+def _candidate_byteplane(
+    body: bytes, width: int
+) -> Tuple[int, str, List[bytes], bytes]:
     if width <= 1:
         return T_BYTEPLANE, "", [body], b""
     tlen = transforms.tail_len(len(body), width)
@@ -285,7 +306,9 @@ def _candidate_byteplane(body: bytes, width: int) -> Tuple[int, str, List[bytes]
     return T_BYTEPLANE, "", transforms.split_planes(aligned, width), tail
 
 
-def _candidate_bitfield(body: bytes, spec_name: str) -> Optional[Tuple[int, str, List[bytes], bytes]]:
+def _candidate_bitfield(
+    body: bytes, spec_name: str
+) -> Optional[Tuple[int, str, List[bytes], bytes]]:
     spec = bitfield.resolve_spec(spec_name)
     itemsize = spec.itemsize
     tlen = len(body) % itemsize
@@ -308,7 +331,7 @@ def _pack_low_bits(values: np.ndarray, nbits: int) -> bytes:
         return b""
     wide = values.astype(">u8")  # big-endian so unpackbits is MSB-first
     bits = np.unpackbits(wide.view(np.uint8).reshape(count, 8), axis=1)
-    low = bits[:, 64 - nbits:]   # keep only the meaningful low nbits
+    low = bits[:, 64 - nbits :]  # keep only the meaningful low nbits
     return np.packbits(low.reshape(-1)).tobytes()
 
 
@@ -320,12 +343,14 @@ def _unpack_low_bits(packed: bytes, count: int, nbits: int, dtype) -> np.ndarray
     allbits = np.unpackbits(np.frombuffer(packed, dtype=np.uint8))[:nbit_total]
     low = allbits.reshape(count, nbits)
     full = np.zeros((count, 64), dtype=np.uint8)
-    full[:, 64 - nbits:] = low
+    full[:, 64 - nbits :] = low
     wide = np.packbits(full, axis=1).view(">u8").reshape(-1)
     return wide.astype(dtype)
 
 
-def _candidate_bitpack(body: bytes, spec_name: str) -> Optional[Tuple[int, str, List[bytes], bytes]]:
+def _candidate_bitpack(
+    body: bytes, spec_name: str
+) -> Optional[Tuple[int, str, List[bytes], bytes]]:
     """Sign / exponent / *bit-packed* mantissa split.
 
     Differs from :func:`_candidate_bitfield` only in that the mantissa is packed
@@ -341,8 +366,8 @@ def _candidate_bitpack(body: bytes, spec_name: str) -> Optional[Tuple[int, str, 
     mant_mask = (1 << spec.mantissa_bits) - 1
     exp_mask = (1 << spec.exp_bits) - 1
     sign = (u >> (spec.total_bits - 1)).astype(np.uint8)
-    exponent = ((u >> spec.mantissa_bits) & exp_mask)
-    mantissa = (u & mant_mask)
+    exponent = (u >> spec.mantissa_bits) & exp_mask
+    mantissa = u & mant_mask
     sign_stream = np.packbits(sign).tobytes()
     # exponent fits in <=8 bits for every supported spec -> one byte each.
     exp_stream = exponent.astype(np.uint8).tobytes()
@@ -353,6 +378,7 @@ def _candidate_bitpack(body: bytes, spec_name: str) -> Optional[Tuple[int, str, 
 # --------------------------------------------------------------------------- #
 # Frame (de)serialization
 # --------------------------------------------------------------------------- #
+
 
 def _serialize(
     transform: int,
@@ -399,27 +425,44 @@ def _deserialize(blob: bytes):
     off += 5
     if version != VERSION:
         raise ValueError(f"unsupported z4ai-Auto version {version}")
-    (spec_len,) = struct.unpack_from("<B", mv, off); off += 1
-    spec_name = bytes(mv[off : off + spec_len]).decode("ascii"); off += spec_len
-    (count,) = struct.unpack_from("<Q", mv, off); off += 8
-    (np_len,) = struct.unpack_from("<B", mv, off); off += 1
-    np_dtype = bytes(mv[off : off + np_len]).decode("ascii"); off += np_len
-    (ndim,) = struct.unpack_from("<B", mv, off); off += 1
+    (spec_len,) = struct.unpack_from("<B", mv, off)
+    off += 1
+    spec_name = bytes(mv[off : off + spec_len]).decode("ascii")
+    off += spec_len
+    (count,) = struct.unpack_from("<Q", mv, off)
+    off += 8
+    (np_len,) = struct.unpack_from("<B", mv, off)
+    off += 1
+    np_dtype = bytes(mv[off : off + np_len]).decode("ascii")
+    off += np_len
+    (ndim,) = struct.unpack_from("<B", mv, off)
+    off += 1
     shape = []
     for _ in range(ndim):
-        (d,) = struct.unpack_from("<Q", mv, off); off += 8
+        (d,) = struct.unpack_from("<Q", mv, off)
+        off += 8
         shape.append(d)
-    (tlen,) = struct.unpack_from("<I", mv, off); off += 4
-    tail = bytes(mv[off : off + tlen]); off += tlen
+    (tlen,) = struct.unpack_from("<I", mv, off)
+    off += 4
+    tail = bytes(mv[off : off + tlen])
+    off += tlen
     streams = []
     for _ in range(n_streams):
-        method, orig_len, comp_len = struct.unpack_from("<BQQ", mv, off); off += 17
-        payload = bytes(mv[off : off + comp_len]); off += comp_len
+        method, orig_len, comp_len = struct.unpack_from("<BQQ", mv, off)
+        off += 17
+        payload = bytes(mv[off : off + comp_len])
+        off += comp_len
         streams.append((method, orig_len, payload))
     return {
-        "transform": transform, "width": width, "spec_name": spec_name,
-        "count": count, "np_dtype": np_dtype, "shape": tuple(shape),
-        "tail": tail, "streams": streams, "is_numpy": bool(flags & FLAG_NUMPY),
+        "transform": transform,
+        "width": width,
+        "spec_name": spec_name,
+        "count": count,
+        "np_dtype": np_dtype,
+        "shape": tuple(shape),
+        "tail": tail,
+        "streams": streams,
+        "is_numpy": bool(flags & FLAG_NUMPY),
     }
 
 
@@ -427,10 +470,11 @@ def _deserialize(blob: bytes):
 # Public API
 # --------------------------------------------------------------------------- #
 
+
 def _effort_params(effort: str) -> Tuple[List[int], int, Optional[int], bool]:
     """Return (zstd_levels_to_try, _, brotli_quality, try_all_transforms)."""
     if effort == "fast":
-        return [3], 3, None, False           # zstd-3 only, byte-plane only
+        return [3], 3, None, False  # zstd-3 only, byte-plane only
     if effort == "balanced":
         return [19], 19, (9 if _brotli else None), True
     # "max" -- default for the headline ratio win
@@ -492,7 +536,9 @@ def compress(data, *, dtype: Optional[str] = None, effort: str = "max") -> bytes
     else:
         body = bytes(data)
         width = _DTYPE_WIDTHS.get(dtype, 1)
-        spec_name = _BITFIELD_SPECS.get(dtype.lower() if isinstance(dtype, str) else dtype)
+        spec_name = _BITFIELD_SPECS.get(
+            dtype.lower() if isinstance(dtype, str) else dtype
+        )
 
     zlevels, _, bquality, try_all = _effort_params(effort)
     zlevel = zlevels[0]
@@ -524,13 +570,18 @@ def compress(data, *, dtype: Optional[str] = None, effort: str = "max") -> bytes
         encoded = [_compress_stream(s, zlevel, bquality) for s in streams]
         stream_records = [(m, len(s), p) for (m, p), s in zip(encoded, streams)]
         count = (
-            _bitfield_count(body, spec)
-            if transform in (T_BITFIELD, T_BITPACK)
-            else 0
+            _bitfield_count(body, spec) if transform in (T_BITFIELD, T_BITPACK) else 0
         )
         frame = _serialize(
-            transform, width, spec, count, tail, stream_records,
-            is_numpy, np_dtype, shape,
+            transform,
+            width,
+            spec,
+            count,
+            tail,
+            stream_records,
+            is_numpy,
+            np_dtype,
+            shape,
         )
         if best_frame is None or len(frame) < len(best_frame):
             best_frame = frame
@@ -542,13 +593,12 @@ def decompress(blob, *, out=None) -> bytes:
     if len(blob) >= 4 and bytes(blob[:4]) == b"Z4AI":
         # Interoperate with the streaming codec's frames.
         from . import codec
+
         raw = codec.decompress(bytes(blob))
         return _maybe_out(raw, out)
 
     meta = _deserialize(bytes(blob))
-    streams = [
-        _decompress_stream(m, p, n) for (m, n, p) in meta["streams"]
-    ]
+    streams = [_decompress_stream(m, p, n) for (m, n, p) in meta["streams"]]
     transform = meta["transform"]
     tail = meta["tail"]
     if transform == T_RAW:
@@ -569,7 +619,9 @@ def decompress(blob, *, out=None) -> bytes:
         spec = bitfield.resolve_spec(meta["spec_name"])
         count = meta["count"]
         native = np.dtype(spec.uint_dtype)
-        sign = np.unpackbits(np.frombuffer(streams[0], dtype=np.uint8))[:count].astype(native)
+        sign = np.unpackbits(np.frombuffer(streams[0], dtype=np.uint8))[:count].astype(
+            native
+        )
         exponent = np.frombuffer(streams[1], dtype=np.uint8)[:count].astype(native)
         mantissa = _unpack_low_bits(streams[2], count, spec.mantissa_bits, native)
         u = (
@@ -595,6 +647,7 @@ def decompress_array(blob) -> np.ndarray:
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
+
 
 def _maybe_out(raw: bytes, out) -> bytes:
     if out is None:

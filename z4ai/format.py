@@ -41,9 +41,9 @@ FORMAT_VERSION = 1
 FLAG_NUMPY = 1 << 0
 
 # Transform identifiers.
-TRANSFORM_OPAQUE = 0     # single stream, no field/byte split
+TRANSFORM_OPAQUE = 0  # single stream, no field/byte split
 TRANSFORM_BYTEPLANE = 1  # byte-transpose into ``width`` planes
-TRANSFORM_BITFIELD = 2   # sign / exponent / mantissa field split
+TRANSFORM_BITFIELD = 2  # sign / exponent / mantissa field split
 
 
 @dataclass

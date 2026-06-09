@@ -38,14 +38,14 @@ def test_fast_tier_is_lossless_and_uses_no_rans(dtype):
     # Streaming (Z4AI) frame expected for the fast tier; inspect its plane methods.
     container = fmt.deserialize(blob)
     methods = {p.method for p in container.planes}
-    assert not (methods & _RANS_METHODS), (
-        f"effort='fast' must not use rANS (slow serial decode); got methods {methods}"
-    )
+    assert not (
+        methods & _RANS_METHODS
+    ), f"effort='fast' must not use rANS (slow serial decode); got methods {methods}"
     # At least one plane should take the block-parallel form on this large,
     # compressible input — that is the whole point of the fast tier.
-    assert backend.METHOD_ZSTD_BLOCKS in methods, (
-        f"expected a block-parallel plane in the fast tier; got {methods}"
-    )
+    assert (
+        backend.METHOD_ZSTD_BLOCKS in methods
+    ), f"expected a block-parallel plane in the fast tier; got {methods}"
 
 
 def test_fast_tier_decodes_at_least_as_fast_as_default():

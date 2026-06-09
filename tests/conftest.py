@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Shared pytest fixtures / path setup for the z4ai test suite."""
+
 import sys
 from pathlib import Path
 

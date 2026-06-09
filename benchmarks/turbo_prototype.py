@@ -18,6 +18,7 @@ verified byte-exact here against the same inputs ZipNN sees.
 
 Run:  python benchmarks/turbo_prototype.py [--mb 64] [--dtypes bf16 fp32]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -64,7 +65,9 @@ def _split_streams(raw: bytes, dtype: str):
 def _join_streams(kind: str, streams, n_elems: int) -> bytes:
     if kind == "bf16":
         sign_b, exp_b, mant_b = streams
-        sign = np.unpackbits(np.frombuffer(sign_b, np.uint8), count=n_elems).astype(np.uint16)
+        sign = np.unpackbits(np.frombuffer(sign_b, np.uint8), count=n_elems).astype(
+            np.uint16
+        )
         exp = np.frombuffer(exp_b, np.uint8).astype(np.uint16)
         mant = np.frombuffer(mant_b, np.uint8).astype(np.uint16)
         u = (sign << 15) | (exp << 7) | mant
@@ -93,7 +96,9 @@ def _d_block(b: bytes) -> bytes:
     return b[1:] if b[:1] == b"\x00" else zstd.ZstdDecompressor().decompress(b[1:])
 
 
-def turbo_compress(raw: bytes, dtype: str, pool: ThreadPoolExecutor, level: int = 1) -> bytes:
+def turbo_compress(
+    raw: bytes, dtype: str, pool: ThreadPoolExecutor, level: int = 1
+) -> bytes:
     n_elems = len(raw) // bytes_per_element(dtype)
     kind, *streams = _split_streams(raw, dtype)
     # Flatten all stream blocks into one job list; remember per-stream block count.
@@ -107,7 +112,7 @@ def turbo_compress(raw: bytes, dtype: str, pool: ThreadPoolExecutor, level: int 
     out = bytearray(MAGIC)
     out += struct.pack("<B", len(kind)) + kind.encode()
     out += struct.pack("<QB", n_elems, len(streams))
-    for (slen, nblk) in layout:
+    for slen, nblk in layout:
         out += struct.pack("<QI", slen, nblk)
     for c in comp:
         out += struct.pack("<I", len(c)) + c
@@ -117,19 +122,25 @@ def turbo_compress(raw: bytes, dtype: str, pool: ThreadPoolExecutor, level: int 
 def turbo_decompress(blob: bytes, pool: ThreadPoolExecutor) -> bytes:
     assert blob[:4] == MAGIC
     off = 4
-    (klen,) = struct.unpack_from("<B", blob, off); off += 1
-    kind = blob[off : off + klen].decode(); off += klen
-    n_elems, n_streams = struct.unpack_from("<QB", blob, off); off += 9
+    (klen,) = struct.unpack_from("<B", blob, off)
+    off += 1
+    kind = blob[off : off + klen].decode()
+    off += klen
+    n_elems, n_streams = struct.unpack_from("<QB", blob, off)
+    off += 9
     layout = []
     for _ in range(n_streams):
-        slen, nblk = struct.unpack_from("<QI", blob, off); off += 12
+        slen, nblk = struct.unpack_from("<QI", blob, off)
+        off += 12
         layout.append((slen, nblk))
     comp_blocks = []
-    for (_slen, nblk) in layout:
+    for _slen, nblk in layout:
         per = []
         for _ in range(nblk):
-            (clen,) = struct.unpack_from("<I", blob, off); off += 4
-            per.append(blob[off : off + clen]); off += clen
+            (clen,) = struct.unpack_from("<I", blob, off)
+            off += 4
+            per.append(blob[off : off + clen])
+            off += clen
         comp_blocks.append(per)
     streams = []
     for per in comp_blocks:
@@ -165,15 +176,19 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     import os
+
     workers = args.workers or os.cpu_count() or 8
 
     try:
         import zipnn
+
         have_zipnn = True
     except Exception:
         have_zipnn = False
 
-    print(f"Turbo prototype - {args.mb} MB/dtype, {workers} workers, level={args.level}")
+    print(
+        f"Turbo prototype - {args.mb} MB/dtype, {workers} workers, level={args.level}"
+    )
     print(f"zipnn={'yes' if have_zipnn else 'no'}\n")
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -182,7 +197,9 @@ def main(argv=None):
             data = make_weights(n_elem, dtype=dtype, seed=0)
             mb = len(data) / 1e6
             print(f"== {dtype}  ({mb:.1f} MB) ==")
-            print(f"{'codec':16s}{'ratio':>8}{'comp MB/s':>12}{'decomp MB/s':>14}{'lossless':>10}")
+            print(
+                f"{'codec':16s}{'ratio':>8}{'comp MB/s':>12}{'decomp MB/s':>14}{'lossless':>10}"
+            )
             print("-" * 60)
 
             r, c, d, ok = _bench_codec(
@@ -190,16 +207,29 @@ def main(argv=None):
                 lambda b: turbo_decompress(b, pool),
                 data,
             )
-            print(f"{'z4ai-turbo':16s}{r:8.3f}{c:12.0f}{d:14.0f}{'yes' if ok else 'NO!':>10}")
+            print(
+                f"{'z4ai-turbo':16s}{r:8.3f}{c:12.0f}{d:14.0f}{'yes' if ok else 'NO!':>10}"
+            )
 
             if have_zipnn:
-                zdtype = {"bf16": "bfloat16", "fp16": "float16", "fp32": "float32"}.get(dtype, "float32")
+                zdtype = {"bf16": "bfloat16", "fp16": "float16", "fp32": "float32"}.get(
+                    dtype, "float32"
+                )
+
                 def zc(x):
-                    return zipnn.ZipNN(bytearray_dtype=zdtype, input_format="byte").compress(x)
+                    return zipnn.ZipNN(
+                        bytearray_dtype=zdtype, input_format="byte"
+                    ).compress(x)
+
                 def zd(b):
-                    return zipnn.ZipNN(bytearray_dtype=zdtype, input_format="byte").decompress(b)
+                    return zipnn.ZipNN(
+                        bytearray_dtype=zdtype, input_format="byte"
+                    ).decompress(b)
+
                 r, c, d, ok = _bench_codec(zc, zd, data)
-                print(f"{'zipnn':16s}{r:8.3f}{c:12.0f}{d:14.0f}{'yes' if ok else 'NO!':>10}")
+                print(
+                    f"{'zipnn':16s}{r:8.3f}{c:12.0f}{d:14.0f}{'yes' if ok else 'NO!':>10}"
+                )
             print()
 
 

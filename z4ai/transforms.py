@@ -32,6 +32,7 @@ import numpy as np
 # pure-NumPy implementations in this module stay the reference fallback path.
 try:
     from . import _accel
+
     _HAVE_ACCEL = _accel.HAVE_NATIVE
 except Exception:  # noqa: BLE001
     _accel = None
@@ -79,9 +80,7 @@ def join_planes(planes: List[bytes], width: int, tail: bytes = b"") -> bytes:
         The reconstructed, byte-exact original buffer.
     """
     if len(planes) != width:
-        raise ValueError(
-            f"expected {width} planes, got {len(planes)}"
-        )
+        raise ValueError(f"expected {width} planes, got {len(planes)}")
     if width == 1:
         return bytes(planes[0]) + tail
     if _HAVE_ACCEL:

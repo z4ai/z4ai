@@ -122,8 +122,8 @@ def _index_dtype(k: int) -> np.dtype:
 # Sampled gate tuning (mirrors z4ai.sparse): below this element count the exact
 # distinct count is cheap; above it we estimate on a strided subsample first and
 # only build the palette when the sample's alphabet is already small.
-_SAMPLE_MIN = 1 << 20        # 1M elements
-_SAMPLE_ELEMS = 1 << 18      # 256K-element subsample
+_SAMPLE_MIN = 1 << 20  # 1M elements
+_SAMPLE_ELEMS = 1 << 18  # 256K-element subsample
 
 
 def should_use(raw: bytes, width: int, max_distinct: int = _MAX_DISTINCT) -> bool:
@@ -232,7 +232,9 @@ def compress(
 
     out = bytearray()
     out += MAGIC
-    out += struct.pack("<BBBB", _VERSION, width, _FLAG_NUMPY if is_numpy else 0, index_width)
+    out += struct.pack(
+        "<BBBB", _VERSION, width, _FLAG_NUMPY if is_numpy else 0, index_width
+    )
     out += struct.pack("<QII", count, k, len(tail))
     out += struct.pack("<BB", len(dtype_bytes), len(shape))
     out += dtype_bytes
@@ -277,12 +279,12 @@ def decompress(blob: bytes) -> bytes:
     )
     if vals.size != k:
         raise ValueError("palette codebook length does not match k")
-    idx_dtype = np.dtype("u1") if index_width == 1 else (
-        np.dtype("<u2") if index_width == 2 else np.dtype("<u4")
+    idx_dtype = (
+        np.dtype("u1")
+        if index_width == 1
+        else (np.dtype("<u2") if index_width == 2 else np.dtype("<u4"))
     )
-    idx = np.frombuffer(
-        zstd.ZstdDecompressor().decompress(index_comp), dtype=idx_dtype
-    )
+    idx = np.frombuffer(zstd.ZstdDecompressor().decompress(index_comp), dtype=idx_dtype)
     if idx.size != count:
         raise ValueError("palette index length does not match element count")
     # Gather: one vectorised lookup reconstructs every element exactly.

@@ -68,7 +68,7 @@ def test_bf16_decode_preference_costs_little_ratio() -> None:
     f32 = rng.standard_normal(8_000_000).astype(np.float32) * np.float32(0.03)
     raw = _bf16_bytes(f32)
 
-    auto = codec.compress(raw, dtype="bf16")          # decode-aware AUTO
+    auto = codec.compress(raw, dtype="bf16")  # decode-aware AUTO
     bitfield = codec.compress(raw, dtype="bf16", auto=False)  # bit-field only
 
     # AUTO (byte-plane) gives up at most _BYTEPLANE_DECODE_TOLERANCE on size.

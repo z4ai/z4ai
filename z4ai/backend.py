@@ -46,13 +46,13 @@ import numpy as np
 import zstandard as zstd
 
 # Plane storage methods, serialized in the container header.
-METHOD_STORE = 0         # plane kept verbatim (incompressible)
-METHOD_ZSTD = 1          # plane compressed as a single (LDM) Zstd frame
-METHOD_ZSTD_BLOCKS = 2   # plane compressed as N independent Zstd blocks (parallel)
-METHOD_RANS = 3          # plane entropy-coded with the native order-0 rANS coder (shared model)
-METHOD_RANS_O1 = 5       # plane entropy-coded with the native order-1 (context) rANS coder
-METHOD_RANS_ADAPT = 4    # rANS with a PER-CHUNK local order-0 model (adapts to per-tensor
-                         # exponent drift -> the ratio edge on multi-tensor weights)
+METHOD_STORE = 0  # plane kept verbatim (incompressible)
+METHOD_ZSTD = 1  # plane compressed as a single (LDM) Zstd frame
+METHOD_ZSTD_BLOCKS = 2  # plane compressed as N independent Zstd blocks (parallel)
+METHOD_RANS = 3  # plane entropy-coded with the native order-0 rANS coder (shared model)
+METHOD_RANS_O1 = 5  # plane entropy-coded with the native order-1 (context) rANS coder
+METHOD_RANS_ADAPT = 4  # rANS with a PER-CHUNK local order-0 model (adapts to per-tensor
+# exponent drift -> the ratio edge on multi-tensor weights)
 
 # The native rANS coder is what lets z4ai beat ZipNN on *ratio*: ZipNN entropy-
 # codes its byte planes with Huffman (integer-bit rounding), whereas rANS reaches
@@ -79,8 +79,8 @@ except Exception:  # pragma: no cover - import-time safety net
 # Window-log bounds for LDM.  The lower bound avoids paying LDM setup on tiny
 # planes; the upper bound (128 MiB) is Zstd's default decompressor window limit,
 # so frames stay decodable with a stock ``ZstdDecompressor`` and bounded memory.
-_MIN_WINDOW_LOG = 17   # 128 KiB - below this LDM cannot help anyway
-_MAX_WINDOW_LOG = 27   # 128 MiB - Zstd's ZSTD_WINDOWLOG_LIMIT_DEFAULT
+_MIN_WINDOW_LOG = 17  # 128 KiB - below this LDM cannot help anyway
+_MAX_WINDOW_LOG = 27  # 128 MiB - Zstd's ZSTD_WINDOWLOG_LIMIT_DEFAULT
 
 # Below this size a plane is small enough that the whole-plane LDM pass is already
 # cheap, so we never bother with the block-parallel path (it would only add
@@ -118,10 +118,10 @@ _BLOCK_DECODE_TOLERANCE = 1.01  # keep blocks if <= 1% larger than the LDM frame
 # candidate and let z4ai fall *below* plain Zstd on structured weights (20.7x vs
 # 51x).  Comparing window sizes measures the exploitable property directly.  Measured
 # separation is wide: i.i.d./sparse give big/small ~= 0.99, structured ~= 0.10-0.19.
-_DETECT_SPAN = 2 << 20            # contiguous sample size (bytes)
-_DETECT_PROBE_LEVEL = 1           # fast probe; the LDM gap shows at any level
-_DETECT_SMALL_WINDOW_LOG = 17     # 128 KiB - the block path's effective window
-_DETECT_LDM_GAIN = 0.9            # trigger when big-window < 0.9 * small-window
+_DETECT_SPAN = 2 << 20  # contiguous sample size (bytes)
+_DETECT_PROBE_LEVEL = 1  # fast probe; the LDM gap shows at any level
+_DETECT_SMALL_WINDOW_LOG = 17  # 128 KiB - the block path's effective window
+_DETECT_LDM_GAIN = 0.9  # trigger when big-window < 0.9 * small-window
 
 # Block-payload header: <block_size:u32><n_blocks:u32>, then n_blocks * <clen:u32>,
 # then the concatenated compressed blocks.
@@ -201,14 +201,16 @@ def _has_long_range_redundancy(plane: bytes) -> bool:
             _DETECT_PROBE_LEVEL, enable_ldm=False, window_log=_DETECT_SMALL_WINDOW_LOG
         )
         big = len(zstd.ZstdCompressor(compression_params=big_params).compress(sample))
-        small = len(zstd.ZstdCompressor(compression_params=small_params).compress(sample))
+        small = len(
+            zstd.ZstdCompressor(compression_params=small_params).compress(sample)
+        )
     except Exception:  # noqa: BLE001 - never let detection break compression
         return True
     return small > 0 and big < _DETECT_LDM_GAIN * small
 
 
-_PROBE_BYTES = 1 << 18          # 256 KiB local probe
-_PROBE_INCOMPRESSIBLE = 0.97    # >97% of input after a fast pass == not worth it
+_PROBE_BYTES = 1 << 18  # 256 KiB local probe
+_PROBE_INCOMPRESSIBLE = 0.97  # >97% of input after a fast pass == not worth it
 
 
 def _probe_incompressible(plane: bytes) -> bool:
@@ -268,7 +270,9 @@ def _decompress_blocks(data: bytes, orig_len: int) -> bytes:
         off += clen
 
     def _decompress_one(idx: int) -> bytes:
-        usize = block_size if idx < n_blocks - 1 else orig_len - (n_blocks - 1) * block_size
+        usize = (
+            block_size if idx < n_blocks - 1 else orig_len - (n_blocks - 1) * block_size
+        )
         # Reuse one decompressor per worker thread.  Block decode runs on the
         # persistent ``_block_pool``; allocating a fresh ZstdDecompressor per
         # block (n_blocks per plane, every decompress call) is measurable
@@ -341,7 +345,9 @@ _O1_MIN_BYTES = 1 << 16  # 64 KiB
 # decode throughput on the largest plane at negligible ratio cost (the real ratio
 # win comes from the exponent, kept by the order-1 candidate below, which has its
 # own large-win alphabet gate and is unaffected by this).
-_RANS_ADAPT_MIN_GAIN = 0.01  # rANS must be >=1% smaller than Zstd to justify its decode cost
+_RANS_ADAPT_MIN_GAIN = (
+    0.01  # rANS must be >=1% smaller than Zstd to justify its decode cost
+)
 
 # Entropy pre-gate for the rANS best-of.  A rANS coder (order-0, per-chunk-local,
 # or order-1) has NO LZ stage, so it can only beat the Zstd plane payload when Zstd
@@ -370,7 +376,9 @@ def _order0_entropy_size(plane: bytes) -> float:
     n = len(plane)
     if n == 0:
         return 0.0
-    counts = np.bincount(np.frombuffer(plane, dtype=np.uint8), minlength=256).astype(np.float64)
+    counts = np.bincount(np.frombuffer(plane, dtype=np.uint8), minlength=256).astype(
+        np.float64
+    )
     nz = counts[counts > 0]
     p = nz / n
     bits_per_sym = float(-(p * np.log2(p)).sum())
@@ -476,10 +484,13 @@ def compress_plane(
     # that turns z4ai's i.i.d.-weight tie/loss vs ZipNN into a win is preserved; and
     # it is bypassed entirely in max-ratio mode, where the smallest file wins
     # regardless of compress speed.
-    if not _max_ratio and len(best.data) < _RANS_GATE_MARGIN * _order0_entropy_size(plane):
+    if not _max_ratio and len(best.data) < _RANS_GATE_MARGIN * _order0_entropy_size(
+        plane
+    ):
         return best
     adapt_beat = (
-        len(best.data) if _max_ratio
+        len(best.data)
+        if _max_ratio
         else int(len(best.data) * (1.0 - _RANS_ADAPT_MIN_GAIN))
     )
     cand = _rans_candidate(plane, adapt_beat)
@@ -490,8 +501,12 @@ def compress_plane(
     # +6.4% on distilgpt2's bf16 exponent over Zstd-LDM, +24% over order-0 rANS).
     # Gated on a small alphabet so the high-entropy mantissa pays no wasted pass,
     # and kept only when it beats the current best -- never a regression.
-    if (parallel and _rans_o1 is not None and len(plane) >= _O1_MIN_BYTES
-            and _distinct_bytes(plane) <= _O1_MAX_ALPHABET):
+    if (
+        parallel
+        and _rans_o1 is not None
+        and len(plane) >= _O1_MIN_BYTES
+        and _distinct_bytes(plane) <= _O1_MAX_ALPHABET
+    ):
         o1 = _rans_o1_candidate(plane, len(best.data))
         if o1 is not None:
             best = o1

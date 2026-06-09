@@ -21,6 +21,7 @@ Usage:
     python benchmarks/benchmark_scenarios.py
     python benchmarks/benchmark_scenarios.py --elems 4000000 --effort max
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,6 +39,7 @@ from z4ai import auto  # noqa: E402
 
 try:
     import zipnn  # noqa: E402
+
     _HAVE_ZIPNN = True
 except ImportError:
     _HAVE_ZIPNN = False
@@ -79,7 +81,7 @@ def _ratio_zstd(data: bytes, level: int):
 
 def _ratio_zipnn(data: bytes):
     z = zipnn.ZipNN(bytearray_dtype="bfloat16", input_format="byte")
-    comp = z.compress(bytes(bytearray(data)))            # fresh copy: zipnn mutates input
+    comp = z.compress(bytes(bytearray(data)))  # fresh copy: zipnn mutates input
     out = z.decompress(bytes(bytearray(comp)))
     return len(data) / len(comp), bytes(out) == bytes(bytearray(data))
 
@@ -92,13 +94,17 @@ def _ratio_auto(data: bytes, effort: str):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--elems", type=int, default=2_000_000, help="bf16 elements per scenario")
+    p.add_argument(
+        "--elems", type=int, default=2_000_000, help="bf16 elements per scenario"
+    )
     p.add_argument("--effort", default="max", choices=["fast", "balanced", "max"])
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args(argv)
 
-    print(f"z4ai scenario benchmark - bf16, {args.elems:,} elems/scenario, "
-          f"effort={args.effort}, zipnn={'yes' if _HAVE_ZIPNN else 'not installed'}\n")
+    print(
+        f"z4ai scenario benchmark - bf16, {args.elems:,} elems/scenario, "
+        f"effort={args.effort}, zipnn={'yes' if _HAVE_ZIPNN else 'not installed'}\n"
+    )
     hdr = f"{'scenario':<11}{'zstd-19':>9}{'zipnn':>9}{'z4ai-auto':>11}{'auto vs zipnn':>15}"
     print(hdr)
     print("-" * len(hdr))
@@ -122,8 +128,10 @@ def main(argv=None):
         print(f"{name:<11}{zr:>9.3f}{nr_s:>9}{ar:>11.3f}{verdict:>15}{flags}")
 
     if _HAVE_ZIPNN:
-        print(f"\nVerdict vs ZipNN: {wins} win(s), {losses} loss(es) across scenarios "
-              f"(ties counted as neither). AUTO trades compress speed for ratio.")
+        print(
+            f"\nVerdict vs ZipNN: {wins} win(s), {losses} loss(es) across scenarios "
+            f"(ties counted as neither). AUTO trades compress speed for ratio."
+        )
 
 
 if __name__ == "__main__":

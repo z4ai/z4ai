@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Round-trip + ratio tests for the dependency-free safetensors adapter."""
+
 from __future__ import annotations
 
 import json
@@ -10,7 +11,6 @@ import numpy as np
 import pytest
 
 from z4ai import safetensors as zst
-
 
 # safetensors numpy dtype -> declared string.
 _NP_TO_ST = {
@@ -55,7 +55,7 @@ def _build_safetensors(tensors: dict, metadata: dict | None = None) -> bytes:
 
 def _weights(n, scale=0.02, seed=0):
     rng = np.random.default_rng(seed)
-    return (rng.standard_normal(n).astype(np.float32) * scale)
+    return rng.standard_normal(n).astype(np.float32) * scale
 
 
 def _bf16(f32: np.ndarray) -> np.ndarray:
@@ -93,7 +93,9 @@ def test_roundtrip_levels(level):
 
 def test_shrinks_low_entropy_weights():
     # Realistic small-scale Gaussian fp32 weights compress (low-entropy exponent).
-    blob = _build_safetensors({f"layer{i}.w": _weights(20000, seed=i) for i in range(4)})
+    blob = _build_safetensors(
+        {f"layer{i}.w": _weights(20000, seed=i) for i in range(4)}
+    )
     frame = zst.compress_bytes(blob)
     assert len(frame) < len(blob)
     assert zst.decompress_bytes(frame) == blob
@@ -134,9 +136,7 @@ def test_tied_embedding_dedup():
     # nearly free, so the file with the tie compresses far better than if the
     # two large tensors were distinct.
     emb = _weights(200_000, seed=3)
-    tied = _build_safetensors(
-        {"model.embed_tokens.weight": emb, "lm_head.weight": emb}
-    )
+    tied = _build_safetensors({"model.embed_tokens.weight": emb, "lm_head.weight": emb})
     distinct = _build_safetensors(
         {"model.embed_tokens.weight": emb, "lm_head.weight": _weights(200_000, seed=4)}
     )
@@ -156,9 +156,9 @@ def test_dedup_fingerprint_collision_is_not_deduped():
     # distinct, never falsely deduped to a reference (which would corrupt output).
     n = 50_000
     a = np.zeros(n, dtype=np.uint8)
-    a[: 512] = 7      # head sample region
-    a[n // 2 : n // 2 + 512] = 9   # middle sample region
-    a[n - 512 :] = 11             # tail sample region
+    a[:512] = 7  # head sample region
+    a[n // 2 : n // 2 + 512] = 9  # middle sample region
+    a[n - 512 :] = 11  # tail sample region
     b = a.copy()
     # Differ in a region NOT covered by the head/middle/tail samples.
     a[2000] = 1
@@ -222,9 +222,7 @@ def test_reader_resolves_tied_weight_reference():
     # lm_head is tied to embed_tokens: stored once, referenced. Reading either
     # name must return the identical bytes, transparently following the ref.
     emb = _weights(40_000, seed=7)
-    blob = _build_safetensors(
-        {"model.embed_tokens.weight": emb, "lm_head.weight": emb}
-    )
+    blob = _build_safetensors({"model.embed_tokens.weight": emb, "lm_head.weight": emb})
     r = zst.ZstnReader.from_bytes(zst.compress_bytes(blob))
     raw_emb = r.read_raw("model.embed_tokens.weight")
     raw_head = r.read_raw("lm_head.weight")
@@ -236,8 +234,8 @@ def test_reader_resolves_tied_weight_reference():
 def test_reader_touches_only_the_requested_frame(tmp_path):
     # The point of the index: reading one tensor must not read the bytes of the
     # others. We prove it by counting bytes read from a tracking file wrapper.
-    big = _weights(500_000, seed=1)        # large frame we will NOT read
-    small = _weights(200, seed=2)          # small frame we WILL read
+    big = _weights(500_000, seed=1)  # large frame we will NOT read
+    small = _weights(200, seed=2)  # small frame we WILL read
     blob = _build_safetensors({"big": big, "small": small})
     path = tmp_path / "m.zstn"
     zst.compress_file(  # write a real file

@@ -10,6 +10,7 @@ compiler - that is the whole point.
 
 ``HAVE_NATIVE`` tells callers (and the benchmark) which path is live.
 """
+
 from __future__ import annotations
 
 from typing import List
@@ -31,7 +32,7 @@ def split_planes(buf: bytes, width: int) -> List[bytes]:
         raise ValueError(f"width must be positive, got {width}")
     n = len(buf) // width
     if width == 1:
-        return [bytes(buf[: n])]
+        return [bytes(buf[:n])]
     if n == 0:
         return [b"" for _ in range(width)]
 
