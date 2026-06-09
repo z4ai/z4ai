@@ -141,6 +141,15 @@ providing lossless transforms that exploit the redundancy real checkpoints carry
 offers practitioners storage and transfer savings with no precision loss, and gives
 researchers an open, scriptable reference implementation to compare against.
 
+# AI usage disclosure
+
+Generative AI tools were used only minimally, for incidental assistance with
+editing and proofreading the manuscript prose. The software design, implementation,
+benchmark methodology, and all claims and results are the author's own work. The
+author takes full responsibility for the correctness of the software and the paper;
+all reported compression ratios come from the reproducible benchmarks in the
+repository.
+
 # Acknowledgements
 
 We are grateful to the authors of the prior systems cited here, whose published
