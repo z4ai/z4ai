@@ -117,7 +117,26 @@ def _load():
             return _lib
         if not _build():
             return None
-        lib = ctypes.CDLL(_LIB)
+        try:
+            lib = ctypes.CDLL(_LIB)
+        except OSError:
+            # A cached library can be present and newer than the source yet still
+            # unloadable for this interpreter — most often a wrong-architecture
+            # prebuilt (e.g. an arm64 .dylib under an x86_64 Python).  _build()
+            # trusts it by mtime and won't replace it, so drop the stale artifact
+            # and rebuild once from source before giving up.  If it still won't
+            # load, return None so callers fall back to the pure-Python coder
+            # instead of surfacing an OSError.
+            try:
+                os.remove(_LIB)
+            except OSError:
+                return None
+            if not _build():
+                return None
+            try:
+                lib = ctypes.CDLL(_LIB)
+            except OSError:
+                return None
         u8p = ctypes.POINTER(ctypes.c_uint8)
         u16p = ctypes.POINTER(ctypes.c_uint16)
         lib.z4ai_rans_encode.restype = ctypes.c_size_t
