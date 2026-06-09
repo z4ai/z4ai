@@ -1,0 +1,31 @@
+# Builds the JOSS paper to PDF on every push that touches the paper, so the
+# rendered draft can be downloaded from the Actions tab (Artifacts) and the
+# "I have verified that my paper compiles" submission box can be checked.
+name: Draft PDF
+
+on:
+  push:
+    paths:
+      - "paper/**"
+      - ".github/workflows/draft-pdf.yml"
+  workflow_dispatch:
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    name: Paper Draft
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build draft PDF
+        uses: openjournals/openjournals-draft-action@master
+        with:
+          journal: joss
+          paper-path: paper/paper.md
+
+      - name: Upload draft PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper
+          path: paper/paper.pdf

@@ -76,31 +76,26 @@ encoding per stream (never worse than plain `zstd`), preserves per-tensor random
 access, and ships as a drop-in Python library and CLI rather than a corpus-scale
 storage service. This puts the structural and cross-checkpoint redundancy the
 entropy bound assumes away within reach of the settings where a repository-wide
-deduplication system is not an option. On benchmarks reproducible from the
-repository, this yields large lossless gains over ZipNN where redundancy exists:
-INT8-in-`fp32` 4.72x vs 1.94x, INT4-in-`fp32` 10.8x vs 4.6x, a realistic structured
-checkpoint 2.93x vs 1.67x (+76%), and a 5%-changed checkpoint delta ~30x smaller
-than a from-scratch compress (1% changed → ~184x), for which ZipNN has no
-equivalent. The trade is throughput: `z4ai` compresses several times slower than
-ZipNN's compiled-C core (decompression is competitive), which suits the
-write-once, read-many lifecycle of a stored checkpoint.
-
-These wins do not make `z4ai` a replacement for repository-scale storage systems.
-The closest such system, ZipLLM [@zipllm], uses content-defined chunking and
-model-family clustering to deduplicate an entire corpus and reports substantially
-higher whole-corpus savings than any per-file codec can reach — a regime `z4ai`
-does not target. The two are complementary: ZipLLM optimizes a *managed
-repository*, whereas `z4ai` is a self-contained *codec* — single file in,
-byte-exact out, with per-tensor random-access reads, an explicit single-reference
-delta, and the palette transform — for the many pipelines and object stores that
-have no such repository service to build on.
+deduplication system is not an option. Where redundancy is present, this yields
+large lossless gains over ZipNN — several-fold ratios on quantized weights shipped
+in wide float containers, and one to two orders of magnitude on cross-checkpoint
+deltas, for which ZipNN has no equivalent. The trade is throughput: `z4ai`
+compresses several times slower than ZipNN's compiled-C core, with competitive
+decompression, which suits the write-once, read-many lifecycle of a stored
+checkpoint. Complete, reproducible benchmarks are provided in the repository.
 
 `z4ai` is most useful in settings the Hugging Face Hub's Xet backend does not
 cover — self-hosted registries, internal MLOps pipelines, and plain object storage —
 and to researchers studying float-tensor and checkpoint-sequence compression who
 need a reproducible, byte-exact baseline that captures structural redundancy.
 
-# Design
+# Software design
+
+![The z4ai pipeline. Float tensors are split into sign/exponent/mantissa planes;
+low-entropy planes are entropy-coded, the noise-like mantissa is stored or
+`zstd`-compressed, a whole-tensor matching pass deduplicates repeated and tied
+weights, and a best-of selection keeps the smallest encoding in a self-describing,
+randomly-addressable container.\label{fig:pipeline}](pipeline.png){ width=85% }
 
 A float tensor is decomposed into `[sign | exponent | mantissa]` planes; the
 low-entropy exponent/sign planes are entropy-coded with an interleaved range-ANS
@@ -119,9 +114,46 @@ reordered or added tensors. General-purpose float codecs such as ALP [@alp] and
 Pcodec [@pcodec] were evaluated but target smooth or decimal-origin numeric data,
 not the full-entropy mantissa of trained weights, and were not adopted.
 
+# State of the field
+
+Lossless weight codecs — ZipNN [@zipnn], NeuZip [@neuzip], DFloat11 [@dfloat11],
+DietGPU [@dietgpu], and Unweight [@unweight] — entropy-code the float exponent
+within fixed-size chunks and are therefore bounded on dense weights by the entropy
+ceiling described above; @ckptdelta surveys this landscape for low-precision
+formats. At the systems layer, ZipLLM [@zipllm] deduplicates and delta-compresses an
+entire model corpus as a managed service, achieving large whole-corpus savings that
+no per-file codec can match — a regime z4ai does not target. z4ai is distinguished
+by combining whole-tensor matching, a lossless palette transform for dequantized
+quantized weights, and a single-reference delta in one drop-in codec with per-tensor
+random-access reads, making structural and cross-checkpoint redundancy available in
+settings that have no corpus-wide deduplication service. ZipLLM and z4ai are thus
+complementary rather than competing. General numeric codecs (ALP [@alp], Pcodec
+[@pcodec]) target smooth or decimal-origin data and do not fit the full-entropy
+mantissa of trained weights.
+
+# Research impact
+
+z4ai is intended for self-hosted model registries, internal MLOps pipelines, and
+object storage where the Hugging Face Hub's Xet backend is unavailable, and as a
+reproducible, byte-exact baseline for research on float-tensor and
+checkpoint-sequence compression. By making the entropy ceiling explicit and
+providing lossless transforms that exploit the redundancy real checkpoints carry, it
+offers practitioners storage and transfer savings with no precision loss, and gives
+researchers an open, scriptable reference implementation to compare against.
+
 # Acknowledgements
 
-We thank the authors of ZipNN, NeuZip, DFloat11, and ZipLLM, whose published
-analyses of float-field and checkpoint redundancy directly informed this work.
+We are grateful to the authors of the prior systems cited here, whose published
+analyses of float-field and checkpoint redundancy informed this work. No external
+funding supported this project.
+
+# AI usage disclosure
+
+Generative AI tools (large language models) were used to assist with drafting and
+editing this manuscript, with the literature search, and with portions of the
+software implementation, testing, and documentation. All AI-assisted output was
+reviewed and verified by the author, who takes full responsibility for the
+correctness of the software and the claims made here; every quantitative result is
+reproducible from the repository's test and benchmark suite.
 
 # References
