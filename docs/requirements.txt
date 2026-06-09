@@ -1,0 +1,9 @@
+# Docs build dependencies (used by the GitHub Pages workflow).
+sphinx>=7
+furo
+myst-parser
+sphinx-copybutton
+sphinx-design
+# Runtime deps so autodoc can import the package:
+numpy>=1.21
+zstandard>=0.20

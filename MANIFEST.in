@@ -1,0 +1,15 @@
+# Copyright 2026 The z4ai Authors.
+# Licensed under the Apache License, Version 2.0. See the LICENSE file.
+#
+# Ensure source distributions carry the native C sources that rANS and the SIMD
+# byte-shuffle JIT-compile on first use, plus project docs/metadata. Wheels get
+# these via [tool.setuptools.package-data] in pyproject.toml; sdists need them
+# listed here too.
+recursive-include z4ai/_native *.c *.h
+include z4ai/_native_shuffle.c
+include z4ai/_native_codec.c
+include LICENSE
+include NOTICE
+include README.md
+include pyproject.toml
+include setup.py

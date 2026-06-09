@@ -1,0 +1,110 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="z4ai logo">
+  <defs>
+    <!-- background gradient: deep space navy -->
+    <radialGradient id="bg" cx="35%" cy="28%" r="90%">
+      <stop offset="0%" stop-color="#111a2e"/>
+      <stop offset="55%" stop-color="#0a0f1d"/>
+      <stop offset="100%" stop-color="#05070e"/>
+    </radialGradient>
+
+    <!-- neon accent gradient: cyan -> violet -> magenta -->
+    <linearGradient id="neon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22e3ff"/>
+      <stop offset="50%" stop-color="#6a7bff"/>
+      <stop offset="100%" stop-color="#ff45d0"/>
+    </linearGradient>
+
+    <linearGradient id="neonV" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#22e3ff"/>
+      <stop offset="100%" stop-color="#ff45d0"/>
+    </linearGradient>
+
+    <!-- glow -->
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="9" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <clipPath id="round">
+      <rect x="0" y="0" width="512" height="512" rx="112" ry="112"/>
+    </clipPath>
+  </defs>
+
+  <!-- card -->
+  <g clip-path="url(#round)">
+    <rect x="0" y="0" width="512" height="512" fill="url(#bg)"/>
+
+    <!-- faint grid to read as 'data / tensor' -->
+    <g stroke="#1b2740" stroke-width="1" opacity="0.5">
+      <path d="M0 128 H512 M0 256 H512 M0 384 H512"/>
+      <path d="M128 0 V512 M256 0 V512 M384 0 V512"/>
+    </g>
+
+    <!-- COMPRESSION MOTIF: wide weight rows on the left squeezing into a dense packed block on the right -->
+    <g filter="url(#softGlow)">
+      <!-- loose / uncompressed rows (left) -->
+      <g fill="url(#neon)" opacity="0.85">
+        <rect x="96"  y="150" width="120" height="14" rx="7"/>
+        <rect x="96"  y="186" width="150" height="14" rx="7"/>
+        <rect x="96"  y="222" width="104" height="14" rx="7"/>
+        <rect x="96"  y="294" width="138" height="14" rx="7"/>
+        <rect x="96"  y="330" width="118" height="14" rx="7"/>
+        <rect x="96"  y="366" width="156" height="14" rx="7"/>
+      </g>
+      <!-- compressed dense block (right) -->
+      <g fill="url(#neonV)">
+        <rect x="300" y="150" width="116" height="216" rx="14" opacity="0.18"/>
+        <rect x="312" y="166" width="92" height="9" rx="4.5"/>
+        <rect x="312" y="182" width="92" height="9" rx="4.5"/>
+        <rect x="312" y="198" width="92" height="9" rx="4.5"/>
+        <rect x="312" y="214" width="92" height="9" rx="4.5"/>
+        <rect x="312" y="230" width="92" height="9" rx="4.5"/>
+        <rect x="312" y="246" width="92" height="9" rx="4.5"/>
+        <rect x="312" y="262" width="92" height="9" rx="4.5"/>
+        <rect x="312" y="278" width="92" height="9" rx="4.5"/>
+        <rect x="312" y="294" width="92" height="9" rx="4.5"/>
+        <rect x="312" y="310" width="92" height="9" rx="4.5"/>
+        <rect x="312" y="326" width="92" height="9" rx="4.5"/>
+        <rect x="312" y="342" width="92" height="9" rx="4.5"/>
+      </g>
+      <!-- arrows showing the squeeze -->
+      <g stroke="url(#neon)" stroke-width="6" stroke-linecap="round" opacity="0.9">
+        <path d="M264 222 L292 222"/>
+        <path d="M280 210 L292 222 L280 234"/>
+        <path d="M264 294 L292 294"/>
+        <path d="M280 282 L292 294 L280 306"/>
+      </g>
+    </g>
+
+    <!-- BIG Z mark, drawn over the motif -->
+    <g filter="url(#glow)">
+      <path d="M168 132 H352 L208 348 H360"
+            fill="none"
+            stroke="url(#neon)"
+            stroke-width="34"
+            stroke-linejoin="round"
+            stroke-linecap="round"/>
+    </g>
+
+    <!-- wordmark -->
+    <text x="256" y="446" text-anchor="middle"
+          font-family="'SF Mono','JetBrains Mono','Menlo',monospace"
+          font-size="62" font-weight="700"
+          letter-spacing="2" fill="#eaf2ff">z4<tspan fill="#22e3ff">ai</tspan></text>
+  </g>
+
+  <!-- neon rim -->
+  <rect x="2.5" y="2.5" width="507" height="507" rx="110" ry="110"
+        fill="none" stroke="url(#neon)" stroke-width="3" opacity="0.55"/>
+</svg>

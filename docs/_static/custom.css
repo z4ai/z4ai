@@ -1,0 +1,133 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* z4ai docs polish on top of the Furo theme.
+   Brand accent: neon cyan -> violet -> magenta, lifted from the logo. */
+
+:root {
+  --z4ai-cyan: #22e3ff;
+  --z4ai-violet: #6a7bff;
+  --z4ai-magenta: #ff45d0;
+  --z4ai-gradient: linear-gradient(
+    100deg, var(--z4ai-cyan) 0%, var(--z4ai-violet) 52%, var(--z4ai-magenta) 100%
+  );
+}
+
+/* --- Logo: give it a touch of breathing room and a soft rounded card. ----- */
+.sidebar-logo {
+  border-radius: 16px;
+  width: 132px;
+}
+.sidebar-logo-container {
+  margin: 1.2rem auto 0.4rem;
+}
+
+/* --- Headings: a subtle gradient accent bar under the page title. -------- */
+h1 {
+  position: relative;
+  padding-bottom: 0.35em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+h1::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 3.2rem;
+  border-radius: 3px;
+  background: var(--z4ai-gradient);
+}
+
+/* --- Inline code & literals: legible, lightly tinted. -------------------- */
+code.literal,
+.rst-content code,
+.highlight {
+  border-radius: 8px;
+}
+code.literal {
+  padding: 0.12em 0.38em;
+  font-size: 0.86em;
+}
+
+/* --- Tables: clean header, zebra rows, rounded frame. -------------------- */
+table.docutils,
+.rst-content table.docutils,
+article table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--color-background-border);
+  border-radius: 10px;
+  overflow: hidden;
+  width: 100%;
+  font-size: 0.92em;
+}
+article table thead {
+  background: var(--color-background-secondary);
+}
+article table th {
+  font-weight: 650;
+  border-bottom: 2px solid var(--color-background-border) !important;
+}
+article table th,
+article table td {
+  padding: 0.5em 0.8em;
+  border: none;
+  border-bottom: 1px solid var(--color-background-border);
+}
+article table tbody tr:nth-child(odd) {
+  background: var(--color-background-hover);
+}
+article table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* --- sphinx-design cards: lift on hover, gradient top edge. -------------- */
+.sd-card {
+  border-radius: 14px !important;
+  border: 1px solid var(--color-background-border) !important;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+  overflow: hidden;
+}
+.sd-card::before {
+  content: "";
+  display: block;
+  height: 3px;
+  background: var(--z4ai-gradient);
+  opacity: 0.85;
+}
+.sd-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px -12px rgba(34, 110, 255, 0.45);
+  border-color: var(--z4ai-violet) !important;
+}
+.sd-card .sd-card-title {
+  font-weight: 650;
+}
+
+/* --- The hero blurb at the top of the landing page. ---------------------- */
+.z4ai-hero {
+  font-size: 1.12rem;
+  line-height: 1.6;
+  margin: 0.2rem 0 1.4rem;
+}
+.z4ai-hero .z4ai-grad {
+  background: var(--z4ai-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+}
+
+/* --- Admonitions: slightly softer corners to match. ---------------------- */
+.admonition,
+div.admonition {
+  border-radius: 10px;
+}
+
+/* --- Brand the primary action / API signatures subtly. ------------------- */
+dl.py.class > dt,
+dl.py.function > dt,
+dl.py.method > dt {
+  border-left: 3px solid var(--z4ai-violet);
+  border-radius: 0 8px 8px 0;
+}

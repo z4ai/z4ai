@@ -1,0 +1,48 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python caches / build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Native extension build intermediates (rebuilt on demand by build_native.py /
+# setup.py). Version/platform-specific outputs must not be committed; whether to
+# ship a prebuilt cross-platform lib is a separate, deliberate decision.
+*.cpython-*.so
+*.so
+*.dylib
+*.dll
+*.o
+*.obj
+
+# Test / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Benchmark scratch output
+*.z4ai
+benchmarks/*.bin
+
+# Working notes are local-only (agent iteration artifacts). Only README.md and
+# the Sphinx docs sources are tracked; use `git add -f` to track another markdown
+# file deliberately.
+*.md
+!README.md
+!docs/*.md
+
+# Sphinx build output
+docs/_build/

@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Release to PyPI
+
+# Manual trigger only - you publish on demand from the Actions tab
+# (Run workflow). Authenticates with the PYPI_TOKEN repository secret.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and validate only - do NOT upload to PyPI"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # sdist only: the native extensions use `-march=native`, so a prebuilt
+      # wheel would be CPU-specific and unsafe to redistribute. From the sdist
+      # the optional extensions compile on the user's machine (or fall back to
+      # pure Python).
+      - name: Build sdist
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build --sdist
+
+      - name: Validate metadata
+        run: twine check dist/*
+
+      - name: Publish to PyPI
+        if: ${{ !inputs.dry_run }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: twine upload --skip-existing dist/*

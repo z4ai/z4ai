@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "z4ai"
+version = "0.1.0"
+description = "Lossless compression codec tuned for neural-network model weights"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Hyukjin Kwon", email = "gurwls223@apache.org" }]
+keywords = ["compression", "lossless", "model-weights", "zstd", "bf16", "fp16"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Archiving :: Compression",
+]
+dependencies = [
+    "numpy>=1.21",
+    "zstandard>=0.20",
+]
+
+[project.optional-dependencies]
+# brotli powers the `effort="max"` high-ratio tier: a chunk-parallel context-
+# modeling backend that reaches below the order-0 entropy floor ZipNN stops at
+# (+3% to +12% smaller than ZipNN on real transformers; see README). The codec
+# degrades gracefully without it (effort="max" then falls back to the fast
+# default). Included in test/benchmark extras so the brotli path runs in CI.
+test = ["pytest>=7.0", "brotli"]
+benchmark = ["zipnn", "brotli"]
+maxratio = ["brotli"]
+
+[project.urls]
+Homepage = "https://github.com/z4ai/z4ai"
+Repository = "https://github.com/z4ai/z4ai"
+Documentation = "https://z4ai.github.io/z4ai/"
+
+[project.scripts]
+z4ai = "z4ai.cli:main"
+
+[tool.setuptools]
+packages = ["z4ai"]
+
+# Ship the native C sources alongside the Python package. The rANS coder and the
+# SIMD byte-shuffle are JIT-compiled from these on first use (see z4ai/rans.py and
+# z4ai/_accel.py); without them an installed wheel silently loses the rANS ratio
+# edge and the native shuffle speedup on machines that build them lazily. Globs
+# are relative to the `z4ai` package directory.
+[tool.setuptools.package-data]
+z4ai = ["_native/*.c", "_native/*.h", "_native_shuffle.c", "_native_codec.c"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

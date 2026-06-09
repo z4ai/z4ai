@@ -1,0 +1,100 @@
+# Copyright 2026 The z4ai Authors.
+# Licensed under the Apache License, Version 2.0. See the LICENSE file.
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install z4ai + test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # `[test]` brings pytest + brotli (the effort="max" backend that
+          # tests/test_auto.py exercises); the editable install also registers
+          # the `z4ai` console-script entry point used by the CLI tests.
+          pip install -e ".[test]"
+
+      - name: Build optional native acceleration (best effort)
+        # The package works without this - the native rANS / shuffle paths fall
+        # back to pure NumPy/Zstd. We still build it so CI exercises the native
+        # code path on the platforms that have a C compiler (ubuntu does).
+        continue-on-error: true
+        run: |
+          python -c "import z4ai.build_native as b; b.build()" || true
+
+      - name: Run unit tests
+        run: python -m pytest tests/ -q
+
+  benchmark-smoke:
+    name: benchmark smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy zstandard
+
+      - name: Run benchmark (small) - verifies losslessness + a real ratio win
+        # benchmark.py verifies every codec is byte-exact and prints ratios.
+        # ZipNN is optional; the benchmark degrades gracefully when it is absent.
+        run: python benchmarks/benchmark.py --mb 4 --dtypes bf16 fp32
+
+      - name: Assert z4ai beats raw Zstd and is lossless (gate)
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, "benchmarks")
+          import numpy as np
+          from _data import make_weights
+          import z4ai
+
+          fails = []
+          for dtype in ("bf16", "fp16", "fp32"):
+              data = make_weights(1_000_000, dtype=dtype, seed=7)
+              blob = z4ai.compress(data, dtype=dtype)
+              # 1) lossless, byte-exact
+              if bytes(z4ai.decompress(blob)) != data:
+                  fails.append(f"{dtype}: NOT lossless")
+                  continue
+              # 2) a real ratio win over storing raw
+              ratio = len(data) / len(blob)
+              if ratio <= 1.05:
+                  fails.append(f"{dtype}: ratio too low ({ratio:.3f}x)")
+              print(f"{dtype}: lossless, ratio {ratio:.3f}x")
+
+          if fails:
+              print("FAIL:", *fails, sep="\n  ")
+              sys.exit(1)
+          print("benchmark gate OK")
+          PY
