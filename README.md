@@ -16,6 +16,7 @@ registries, internal MLOps, plain object storage.
 
 [![CI](https://github.com/z4ai/z4ai/actions/workflows/ci.yml/badge.svg)](https://github.com/z4ai/z4ai/actions/workflows/ci.yml)
 [![Docs](https://github.com/z4ai/z4ai/actions/workflows/docs.yml/badge.svg)](https://z4ai.github.io/z4ai/)
+[![JOSS](https://img.shields.io/badge/JOSS-submission%20pending-orange)](paper/paper.md)
 
 **[Documentation](https://z4ai.github.io/z4ai/)** - quickstart, full usage, how it works, and the API reference.
 
